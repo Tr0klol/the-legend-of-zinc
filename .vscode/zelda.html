@@ -937,6 +937,7 @@ function drawPlayer(f){
 function drawSword(){ if(!sword) return; ctx.fillStyle='#d0d0d0'; ctx.fillRect(sword.x|0,sword.y|0,sword.w,sword.h); ctx.fillStyle='#eeee66'; ctx.fillRect(sword.x|0+6,sword.y|0+6,sword.w-12,sword.h-12); ctx.fillStyle=palette.go; ctx.fillRect(sword.x|0+sword.w/2-2,sword.y|0+sword.h/2-2,4,4); }
 
 function dBoss(e,f){
+  if(e.inv>0) ctx.globalAlpha=.6;
   const x=e.x|0,y=e.y|0,w=e.w,h=e.h;
   const pl=(Math.abs(Math.sin(f*.1))*5)|0;
   if(e.sub==='aquamentus'){
@@ -965,11 +966,12 @@ function dBoss(e,f){
   ctx.fillRect(T,H-T+4,(W-T*2)*(e.hp/e.mhp),8);
   ctx.fillStyle='#fff';ctx.font='7px monospace';
   ctx.fillText(`${e.sub.toUpperCase()} HP: ${e.hp}/${e.mhp}`,T+4,H-T+12);
+  ctx.globalAlpha=1;
 }
 
 function drawEn(e,f){
   const x=e.x|0,y=e.y|0,w=e.w,h=e.h;
-  if(e.inv>0&&Math.floor(e.inv/4)%2===1)ctx.globalAlpha=.3;
+  if(e.inv>0) ctx.globalAlpha=.6;
   if(e.type==='boss')dBoss(e,f);
   else if(e.type==='octorok'){
     ctx.fillStyle=palette.e1;ctx.fillRect(x,y,w,h);
@@ -1055,18 +1057,37 @@ function draw(){ ctx.clearRect(0,0,WIDTH,HEIGHT);
 }
 
 function handleActions(){
+  if(keys.Enter){
+    keys.Enter=false;
+    const tile = getTileAtPlayer();
+    if(gameState==='ow'){
+      if(tile===5||tile===6||tile===7) enterDungeon(getDungeonIndex());
+    } else if(gameState==='dungeon'){
+      if(tile===5) exitDungeon();
+      if(tile===6) openChest();
+      if(tile===2) unlockDoor();
+    }
+  }
   if(gameState==='ow' || gameState==='dungeon'){
     if((keys.z||keys.Z||keys[' ']) && !keys._sword){ swingSword(); keys._sword=true; }
     if((keys.x||keys.X) && !keys._bomb){ placeBomb(); keys._bomb=true; }
     if((keys.c||keys.C) && !keys._sub){ throwItem(); keys._sub=true; }
-    if(keys.Enter && !keys._enter){ interact(); keys._enter=true; }
   }
   if(keys.r||keys.R){ if(gameState==='gameover' || gameState==='win'){ resetGame(); } keys._restart=true; }
 }
 
-function releaseActions(){ if(!keys.z && !keys.Z && !keys[' ']) keys._sword=false; if(!keys.x && !keys.X) keys._bomb=false; if(!keys.c && !keys.C) keys._sub=false; if(!keys.Enter) keys._enter=false; if(!keys.r && !keys.R) keys._restart=false; }
+function releaseActions(){ if(!keys.z && !keys.Z && !keys[' ']) keys._sword=false; if(!keys.x && !keys.X) keys._bomb=false; if(!keys.c && !keys.C) keys._sub=false; if(!keys.r && !keys.R) keys._restart=false; }
 
-function mmUpdate(){ drawMinimap(); }
+function getTileAtPlayer(){
+  const map = gameState==='ow'?getCurrentOWMap():getCurrentDungeonRoom();
+  const tx = Math.floor(player.x / TILE + 0.5), ty = Math.floor(player.y / TILE + 0.5);
+  return map[ty] ? map[ty][tx] : 0;
+}
+
+function getDungeonIndex(){
+  for(let i=0;i<dungeons.length;i++) if(dungeons[i].sx===currentScreenX && dungeons[i].sy===currentScreenY) return i;
+  return 0;
+}
 
 function gameLoop(){ handleActions(); update(); draw(); updateHUD(); mmUpdate(); releaseActions(); requestAnimationFrame(gameLoop); }
 
