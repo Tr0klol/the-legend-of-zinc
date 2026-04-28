@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Legend of Zelda — Ultimate Edition</title>
+<style>
+*{margin:0;padding:0;border:0;box-sizing:border-box}
+body{background:#000;color:#fff;display:flex;align-items:center;justify-content:center;min-height:100vh;overflow:hidden;font-family:'Courier New',monospace;user-select:none}
+#wrap{position:relative}
+canvas{display:block;image-rendering:pixelated;border:3px solid #101010;background:#000}
+#hud{width:512px;padding:8px 10px;background:#101010;border:2px solid #252525;display:flex;justify-content:space-between;gap:12px;align-items:center;font-size:12px}
+#hud b{color:#fff}
+#msg{width:512px;padding:6px 10px;background:#050505;border:1px solid #1a1a1a;min-height:22px;font-size:11px;color:#ccc}
+#ov{position:absolute;inset:0;background:rgba(0,0,0,.96);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:10}
+#ov h1{color:#ffcc00;font-size:36px;letter-spacing:5px;text-shadow:0 0 20px #ffa500;margin-bottom:6px}
+#ov p{color:#aaa;font-size:12px;margin:4px 0}
+#ov .go{color:#4ef;letter-spacing:2px;margin-top:16px;animation:blink 1.1s infinite}
+#mm-w{position:absolute;top:50px;right:-100px;width:84px;padding:6px;background:#101010;border:2px solid #222;border-radius:4px;text-align:center;z-index:5}
+#mm-w small{color:#777;letter-spacing:1px;font-size:9px;display:block;margin-bottom:4px}
+#mm{image-rendering:pixelated;border:1px solid #333}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.12}}
+</style>
+</head>
+<body>
+<div id="ov">
+  <h1>⚔ THE LEGEND OF ZELDA ⚔</h1>
+  <p>WASD / Arrows - Move</p>
+  <p>Z / Space - Sword · X - Bomb · C - Sub Item</p>
+  <p>Enter - Interact / Enter Dungeon / Open Chest / Use Key</p>
+  <p>Collect 3 Triforce Fragments, defeat Ganon, save Zelda!</p>
+  <div class="go">PRESS ANY KEY TO START</div>
+</div>
+<div id="wrap">
+  <div id="mm-w"><small>MINIMAP</small><canvas id="mm" width="72" height="60"></canvas></div>
+  <div id="hud">
+    <div><span style="color:#ffb3b3">HEARTS</span> <b id="hh">♥♥♥</b></div>
+    <div><span style="color:#8fc">RUPEES</span> <b id="hr">0</b></div>
+    <div><span style="color:#ffdd55">KEYS</span> <b id="hk">0</b></div>
+    <div><span style="color:#faa">BOMBS</span> <b id="hb">3</b></div>
+    <div><span style="color:#6ef">ITEM</span> <b id="hi">—</b></div>
+    <div><span style="color:#ffd966">TRI</span> <b id="htf">0/3</b></div>
+  </div>
+  <canvas id="c" width="512" height="352"></canvas>
+  <div id="msg">Find the dungeons, collect the Triforce fragments, and save Zelda.</div>
+</div>
+<script>
+const canvas=document.getElementById('c');
+const ctx=canvas.getContext('2d');
+const mmCanvas=document.getElementById('mm');
+const mmCtx=mmCanvas.getContext('2d');
+const titleOverlay=document.getElementById('ov');
+const msgText=document.getElementById('msg');
+const heartEl=document.getElementById('hh');
+const rupeeEl=document.getElementById('hr');
+const keyEl=document.getElementById('hk');
+const bombEl=document.getElementById('hb');
+const itemEl=document.getElementById('hi');
+const triEl=document.getElementById('htf');
+const TILE=32, COLS=16, ROWS=11, WIDTH=512, HEIGHT=352;
+const OW_COLS=8, OW_ROWS=6;
+let gameState='title';
+let frame=0;
+let keys={};
+
+const palette={
+  grass:'#2d7c16',grass2:'#266a14',wall:'#333333',stone:'#555555',water:'#0b3c8f',wood:'#8b4513',
+  floor:'#111111',dng:'#252525',gold:'#ffd700',heart:'#ff3333',rupee:'#00dd88',key:'#ffdd33',
+  arrow:'#aaccff',boom:'#d2691e',enemy1:'#cc3333',enemy2:'#cc8800',enemy3:'#9999ff',boss:'#880088',
+  black:'#000',white:'#fff',text:'#eee',panel:'#121212'
+};
+
+const OW_SCREENS={
+  '3,2':[ // starting screen, dungeon 1 entrance
+    '1111111111111111',
+    '1000000000000001',
+    '1000333000000001',
+    '1000333000000001',
+    '1000000000000001',
+    '1000005000000001',
+    '1000000000000001',
+    '1000007300000001',
+    '1000000000000001',
+    '1000000000000001',
+    '1111111111111111'
+  ],
+  '6,1':[ // dungeon 2 entrance
+    '1111111111111111',
+    '1000000000000001',
+    '1000000000000001',
+    '1000002222200001',
+    '1000000000000001',
+    '1000000006000001',
+    '1000000000000001',
+    '1000000000000001',
+    '1000000000000001',
+    '1000000000000001',
+    '1111111111111111'
+  ],
+  '1,4':[ // dungeon 3 entrance
+    '1111111111111111',
+    '1000000000000001',
+    '1000000000000001',
+    '1000000000000001',
+    '1000000080000001',
+    '1000000070000001',
+    '1000000000000001',
+    '1000000000000001',
+    '1000000000000001',
+    '1000000000000001',
+    '1111111111111111'
+  ],
+  '2,2':[ // cave with boomerang
+    '1111111111111111',
+    '1000000000000001',
+    '1000000000000001',
+    '1000000000000001',
+    '1000000000000001',
+    '1000000080000001',
+    '1000000000000001',
+    '1000000000000001',
+    '1000000000000001',
+    '1000000000000001',
+    '1111111111111111'
+  ],
+  '3,3':[ // sign screen
+    '1111111111111111',
+    '1000000000000001',
+    '1000000000000001',
+    '1000000000000001',
+    '1000000000000001',
+    '1000000090000001',
+    '1000000000000001',
+    '1000000000000001',
+    '1000000000000001',
+    '1000000000000001',
+    '1111111111111111'
+  ]
+};
+
+function parseMap(lines){
+  return lines.map(r=>[...r].map(c=>parseInt(c,10)));
+}
+
+function makeRandomScreen(sx,sy){
+  const seed = ((sx*1013) ^ (sy*9176)) & 0xffff;
+  let v=seed;
+  const rand=()=>{v=(v*16807)%2147483647;return v/2147483647;};
+  const grid=[];
+  for(let y=0;y<ROWS;y++){
+    let row=[];
+    for(let x=0;x<COLS;x++){
+      if(y===0||y===ROWS-1||x===0||x===COLS-1){
+        if((y===0||y===ROWS-1)&&x>5&&x<10) row.push(0);
+        else if((x===0||x===COLS-1)&&y>4&&y<7) row.push(0);
+        else row.push(1);
+      } else {
+        const r=rand();
+        if(r<.07) row.push(1);
+        else if(r<.12) row.push(3);
+        else if(r<.15) row.push(4);
+        else row.push(0);
+      }
+    }
+    grid.push(row);
+  }
+  return grid;
+}
+
+function getOWScreen(sx,sy){
+  const key=`${sx},${sy}`;
+  if(!OW_SCREENS[key]) OW_SCREENS[key]=makeRandomScreen(sx,sy).map(r=>r.map(Number));
+  if(Array.isArray(OW_SCREENS[key][0])) return OW_SCREENS[key];
+  return parseMap(OW_SCREENS[key]);
+}
+
+function makeDungeonRoom(type){
+  const map=[];
+  for(let y=0;y<ROWS;y++){
+    map[y]=[];
+    for(let x=0;x<COLS;x++) map[y][x]=1;
+  }
+  for(let y=1;y<ROWS-1;y++){
+    for(let x=1;x<COLS-1;x++) map[y][x]=0;
+  }
+  const pillars=[[3,3],[3,12],[7,3],[7,12],[5,7]];
+  for(const [py,px] of pillars) map[py][px]=1;
+  if(type==='entrance'){
+    map[0][7]=3;map[0][8]=3;
+    map[10][7]=3;map[10][8]=3;
+    map[9][14]=5;
+  }
+  if(type==='keyroom'){
+    map[0][7]=2;map[0][8]=1;
+    map[10][7]=3;map[10][8]=3;
+    map[5][6]=6;
+  }
+  if(type==='bossroom'){
+    map[0][7]=2;map[0][8]=1;
+    map[10][7]=3;map[10][8]=3;
+    map[8][7]=7;
+  }
+  return map;
+}
+
+const dungeons=[
+  {name:'Eagle Dungeon',sx:3,sy:2,entrance:5},
+  {name:'Moon Dungeon',sx:6,sy:1,entrance:6},
+  {name:'Death Mountain',sx:1,sy:4,entrance:7}
+];
+
+const dungeonMaps = [
+  { '0,0':makeDungeonRoom('entrance'), '1,0':makeDungeonRoom('keyroom'), '2,0':makeDungeonRoom('bossroom') },
+  { '0,0':makeDungeonRoom('entrance'), '1,0':makeDungeonRoom('keyroom'), '2,0':makeDungeonRoom('bossroom') },
+  { '0,0':makeDungeonRoom('entrance'), '1,0':makeDungeonRoom('keyroom'), '2,0':makeDungeonRoom('bossroom') }
+];
+
+const dungeonState=[
+  {openedChest:{},doorUnlocked:false,bossDefeated:false,cleared:{}},
+  {openedChest:{},doorUnlocked:false,bossDefeated:false,cleared:{}},
+  {openedChest:{},doorUnlocked:false,bossDefeated:false,cleared:{}}
+];
+
+const enemyTemplates=[
+  {
+    '0,0':[{type:'moblin',x:4*TILE+8,y:4*TILE+8},{type:'octorok',x:10*TILE+8,y:6*TILE+8}],
+    '1,0':[{type:'stalfos',x:5*TILE+8,y:3*TILE+8},{type:'stalfos',x:9*TILE+8,y:7*TILE+8}],
+    '2,0':[{type:'boss',sub:'aquamentus',x:7*TILE+2,y:2*TILE+3,hp:16}]
+  },
+  {
+    '0,0':[{type:'octorok',x:4*TILE+8,y:5*TILE+8},{type:'octorok',x:10*TILE+8,y:4*TILE+8}],
+    '1,0':[{type:'wizzrobe',x:3*TILE+6,y:3*TILE+5},{type:'wizzrobe',x:11*TILE+6,y:6*TILE+5}],
+    '2,0':[{type:'boss',sub:'dodongo',x:7*TILE+2,y:2*TILE+2,hp:20}]
+  },
+  {
+    '0,0':[{type:'darknut',x:4*TILE+8,y:4*TILE+8},{type:'darknut',x:10*TILE+8,y:6*TILE+8}],
+    '1,0':[{type:'darknut',x:5*TILE+8,y:3*TILE+8},{type:'octorok',x:9*TILE+8,y:7*TILE+8}],
+    '2,0':[{type:'boss',sub:'ganon',x:7*TILE+2,y:2*TILE+3,hp:26}]
+  }
+];
+
+const player={x:2*TILE+8,y:2*TILE+8,w:14,h:14,dir:2,hp:6,maxHp:6,rupees:0,keys:0,bombs:3,arrows:8,triforce:0,sub:'none',hasBoom:false,hasBow:false,speed:2.4,inv:0,moving:false};
+let currentScreenX=3,currentScreenY=2;
+let inDungeonIndex=0, dungeonRoom='0,0';
+let enemies=[],projectiles=[],drops=[],particles=[],bombs=[],explosions=[];
+let sword=null;
+let roomBlocked=false;
+let messageTimer=0;
+let transition=null;
+
+function beep(freq,type= 'square',duration=.08,vol=.08,finalFreq){
+  try{
+    const o=new (window.AudioContext||window.webkitAudioContext)().createOscillator();
+    const g=o.context.createGain();
+    o.connect(g);g.connect(o.context.destination);
+    o.type=type; o.frequency.setValueAtTime(freq,o.context.currentTime);
+    if(finalFreq) o.frequency.linearRampToValueAtTime(finalFreq,o.context.currentTime+duration);
+    g.gain.setValueAtTime(vol,o.context.currentTime);g.gain.exponentialRampToValueAtTime(.001,o.context.currentTime+duration);
+    o.start();o.stop(o.context.currentTime+duration+.02);
+  }catch(e){}
+}
+
+function sound(type){
+  if(type==='sword')beep(420,'square',.06,.12,220);
+  if(type==='hit')beep(220,'triangle',.08,.14,120);
+  if(type==='die')beep(160,'sawtooth',.18,.2,80);
+  if(type==='pick'){beep(520,'sine',.05,.08);setTimeout(()=>beep(660,'sine',.05,.08),70);}
+  if(type==='bomb')beep(80,'triangle',.22,.22,40);
+  if(type==='unlock'){beep(330,'sine',.09,.12);setTimeout(()=>beep(440,'sine',.09,.12),80);}
+  if(type==='win'){beep(520,'square',.18,.18,760);setTimeout(()=>beep(660,'square',.14,.16),180);}
+}
+
+document.addEventListener('keydown',e=>{keys[e.key]=true;if(gameState==='title'){startGame();}e.preventDefault();});
+document.addEventListener('keyup',e=>{keys[e.key]=false;});
+
+gameState='title';
+
+function showMessage(text,ttl=120){ msgText.textContent=text; messageTimer=ttl; }
+
+function updateHUD(){
+  const hearts=[]; for(let i=0;i<player.maxHp;i+=2){
+    if(player.hp>=i+2) hearts.push('♥'); else if(player.hp===i+1) hearts.push('♡'); else hearts.push('♡');
+  }
+  heartEl.textContent=hearts.join('');
+  rupeeEl.textContent=player.rupees;
+  keyEl.textContent=player.keys;
+  bombEl.textContent=player.bombs;
+  itemEl.textContent=player.sub==='none'?'—':player.sub==='boomerang'?'Boomerang':player.sub==='bow'?'Bow':'—';
+  triEl.textContent=`${player.triforce||0}/3`;
+}
+
+function getCurrentOWMap(){return getOWScreen(currentScreenX,currentScreenY);}
+function getCurrentDungeonRoom(){return dungeonMaps[inDungeonIndex][dungeonRoom];}
+function isSolidOW(tile){return tile===1||tile===2||tile===3||tile===4||tile===8||tile===9;}
+function isSolidDungeon(tile){return tile===1||tile===2;}
+
+function collides(x,y,w,h,map,solidFn){
+  const x1=Math.floor(x/TILE),x2=Math.floor((x+w-1)/TILE);
+  const y1=Math.floor(y/TILE),y2=Math.floor((y+h-1)/TILE);
+  for(let ty=y1;ty<=y2;ty++){
+    for(let tx=x1;tx<=x2;tx++){
+      const t=(map[ty]||[])[tx]; if(t!==undefined && solidFn(t)) return true;
+    }
+  }
+  return false;
+}
+
+function buildDungeonMaps(){
+  for(let i=0;i<3;i++){
+    dungeonMaps[i] = {
+      '0,0':makeDungeonRoom('entrance'),
+      '1,0':makeDungeonRoom('keyroom'),
+      '2,0':makeDungeonRoom('bossroom')
+    };
+  }
+}
+
+function applyDungeonState(){
+  const state=dungeonState[inDungeonIndex];
+  const current = dungeonMaps[inDungeonIndex];
+  if(state.doorUnlocked){
+    current['1,0'][0][7]=3; current['1,0'][0][8]=3;
+    current['2,0'][10][7]=3; current['2,0'][10][8]=3;
+  }
+  if(state.openedChest['1,0']) current['1,0'][5][6]=0;
+}
+
+function spawnDungeonEnemies(){
+  enemies=[];
+  const state=dungeonState[inDungeonIndex];
+  if(state.bossDefeated && dungeonRoom==='2,0') return;
+  const template=enemyTemplates[inDungeonIndex][dungeonRoom]||[];
+  if(state.cleared && state.cleared[dungeonRoom]) return;
+  enemies=template.map(e=>({...e,dx:0,dy:0,tm:0,inv:0,stun:0,life:999,spd:e.type==='moblin'?1.6:e.type==='octorok'?1.3:1.1,hp:e.hp||4,mhp:e.hp||4}));
+  roomBlocked=enemies.length>0;
+}
+
+function spawnOWEnemies(){
+  enemies=[];
+  const map=getCurrentOWMap();
+  const choices=[];
+  for(let y=1;y<ROWS-1;y++) for(let x=1;x<COLS-1;x++){
+    if(map[y][x]===0){
+      const px=x*TILE+8, py=y*TILE+8;
+      if(Math.hypot(px-player.x,py-player.y)>120) choices.push({x:px,y:py});
+    }
+  }
+  const count=2+Math.floor(Math.random()*3);
+  for(let i=0;i<count && choices.length;i++){
+    const idx=Math.floor(Math.random()*choices.length);
+    const pos=choices.splice(idx,1)[0];
+    const type=['octorok','moblin','stalfos'][Math.floor(Math.random()*3)];
+    enemies.push({type, x:pos.x,y:pos.y,w:14,h:14,dx:0,dy:0,tm:0,inv:0,stun:0,spd:type==='moblin'?1.7:1.2,hp:type==='moblin'?4:3,mhp:type==='moblin'?4:3});
+  }
+}
+
+function resetGame(){
+  gameState='ow';
+  currentScreenX=3; currentScreenY=2;
+  inDungeonIndex=0; dungeonRoom='0,0';
+  player.x=2*TILE+8; player.y=2*TILE+8; player.dir=2;
+  player.hp=6; player.rupees=0; player.keys=0; player.bombs=3; player.arrows=8; player.triforce=0;
+  player.sub='none'; player.hasBoom=false; player.hasBow=false; player.inv=0;
+  buildDungeonMaps();
+  applyDungeonState();
+  spawnOWEnemies();
+  projectiles=[]; drops=[]; particles=[]; bombs=[]; explosions=[]; sword=null;
+  roomBlocked=false; titleOverlay.style.display='none';
+  showMessage('Welcome to Hyrule! Reach the dungeons and rescue Zelda.');
+  updateHUD(); mmUpdate();
+}
+
+function startGame(){
+  if(gameState!=='title') return;
+  resetGame();
+}
+
+function changeDungeonRoom(newRoom,from){
+  dungeonRoom=newRoom;
+  let destY = from==='south'? HEIGHT-TILE- player.h - 2: 4;
+  player.y = destY;
+  player.x = 7*TILE + 4;
+  roomBlocked=enemies.length>0;
+  applyDungeonState();
+  spawnDungeonEnemies();
+}
+
+function openChest(){
+  const state=dungeonState[inDungeonIndex];
+  if(state.openedChest[dungeonRoom]) return;
+  const map=getCurrentDungeonRoom();
+  if(map[5][6]===6){
+    state.openedChest[dungeonRoom]=true; map[5][6]=0;
+    drops.push({x:6*TILE+10,y:5*TILE+10,type:'key',val:0,life:360});
+    sound('unlock');
+    showMessage('Found a key! Use it on the locked door.');
+    updateHUD();
+  }
+}
+
+function unlockDoor(){
+  const state=dungeonState[inDungeonIndex];
+  if(state.doorUnlocked) return;
+  if(player.keys<=0){ showMessage('You need a key to unlock this door.'); return; }
+  player.keys--; state.doorUnlocked=true;
+  const map=dungeonMaps[inDungeonIndex];
+  map['1,0'][0][7]=3; map['1,0'][0][8]=3;
+  map['2,0'][10][7]=3; map['2,0'][10][8]=3;
+  sound('unlock');
+  showMessage('The north door is unlocked!');
+  updateHUD();
+}
+
+function enterDungeon(index){
+  inDungeonIndex=index; dungeonRoom='0,0';
+  player.x=7*TILE+4; player.y=HEIGHT-TILE-player.h-6; 
+  buildDungeonMaps(); applyDungeonState(); spawnDungeonEnemies();
+  projectiles=[]; drops=[]; particles=[]; bombs=[]; explosions=[]; sword=null;
+  gameState='dungeon';
+  showMessage(`Entered ${dungeons[index].name}. Find the key.`);
+  mmUpdate();
+}
+
+function exitDungeon(){
+  const info=dungeons[inDungeonIndex];
+  currentScreenX=info.sx; currentScreenY=info.sy;
+  if(info.entrance===5) player.x=11*TILE+8; else if(info.entrance===6) player.x=8*TILE+8; else player.x=6*TILE+8;
+  player.y=5*TILE+16;
+  gameState='ow';
+  spawnOWEnemies();
+  showMessage('Returned to Hyrule.');
+  mmUpdate();
+}
+
+function spawnPickup(x,y,type){
+  drops.push({x,y,type,val:type==='rupee'?1:0,life:360});
+}
+
+function dropLoot(enemy){
+  if(enemy.type==='boss') return;
+  const r=Math.random();
+  if(r<.3) spawnPickup(enemy.x,enemy.y,'rupee');
+  else if(r<.45) spawnPickup(enemy.x,enemy.y,'heart');
+  else if(r<.55) spawnPickup(enemy.x,enemy.y,'bomb');
+  else if(r<.65) spawnPickup(enemy.x,enemy.y,'arrow');
+}
+
+function hitEnemy(idx,dmg,knockX,knockY){
+  const e=enemies[idx];
+  if(e.inv>0) return;
+  e.hp-=dmg; e.inv=18; e.dx=knockX; e.dy=knockY; sound('hit');
+  particles.push({x:e.x+e.w/2,y:e.y+e.h/2,dx:(Math.random()-.5)*2,dy:(Math.random()-.5)*2,life:18,color:'#ffdd55',size:3});
+  if(e.hp<=0){
+    if(e.type==='boss'){ killBoss(idx); }
+    else { sound('die'); dropLoot(e); enemies.splice(idx,1); if(gameState==='dungeon' && enemies.length===0){ roomBlocked=false; const st=dungeonState[inDungeonIndex]; st.cleared[dungeonRoom]=true; showMessage('Room cleared!'); }}
+  }
+}
+
+function killBoss(idx){
+  const e=enemies[idx]; sound('die'); enemies.splice(idx,1);
+  const state=dungeonState[inDungeonIndex]; state.bossDefeated=true;
+  drops.push({x:e.x+8,y:e.y+8,type:'triforce',val:0,life:9999});
+  showMessage('Triforce fragment obtained! Return to the overworld.');
+  roomBlocked=false;
+  if(enemies.length===0) state.cleared[dungeonRoom]=true;
+}
+
+function hurtPlayer(amount){
+  if(player.inv>0 || gameState==='gameover') return;
+  player.hp=Math.max(0,player.hp-amount); player.inv=60; sound('hit');
+  particles.push({x:player.x+player.w/2,y:player.y+player.h/2,dx:(Math.random()-.5)*2,dy:(Math.random()-.5)*2,life:24,color:'#ff2222',size:3});
+  updateHUD();
+  if(player.hp<=0){ gameState='gameover'; showMessage('You have fallen... Press R to restart.'); }
+}
+
+function swingSword(){
+  if(gameState!=='ow' && gameState!=='dungeon') return;
+  if(sword) return;
+  sound('sword');
+  const len=22;
+  let sx=player.x, sy=player.y;
+  if(player.dir===0){ sx=player.x+4; sy=player.y-len+4; }
+  if(player.dir===1){ sx=player.x+player.w-2; sy=player.y+4; }
+  if(player.dir===2){ sx=player.x+4; sy=player.y+player.h-2; }
+  if(player.dir===3){ sx=player.x-len+4; sy=player.y+4; }
+  sword={x:sx,y:sy,w:len,h:len,life:12};
+}
+
+function updateSword(){
+  if(!sword) return;
+  sword.life--;
+  if(sword.life<=0){ sword=null; return; }
+  for(let i=enemies.length-1;i>=0;i--){
+    const e=enemies[i];
+    if(e.inv>0) continue;
+    if(overlap(sword,e)){ const dx=(e.x+e.w/2)-(player.x+player.w/2); const dy=(e.y+e.h/2)-(player.y+player.h/2); const d=Math.hypot(dx,dy)||1; hitEnemy(i,1,dx/d*2,dy/d*2); }
+  }
+}
+
+function overlap(a,b){return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y; }
+
+function placeBomb(){
+  if(player.bombs<=0) return showMessage('No bombs left!');
+  if(gameState!=='ow' && gameState!=='dungeon') return;
+  player.bombs--; updateHUD(); sound('bomb');
+  bombs.push({x:player.x+player.w/2-6,y:player.y+player.h/2-6,life:90});
+}
+
+function throwItem(){
+  if(player.sub==='none') return showMessage('No sub item equipped.');
+  if(player.sub==='boomerang'){
+    if(projectiles.some(p=>p.type==='boomerang')) return;
+    sound('sword');
+    const d={0:{dx:0,dy:-5},1:{dx:5,dy:0},2:{dx:0,dy:5},3:{dx:-5,dy:0}}[player.dir];
+    projectiles.push({type:'boomerang',x:player.x+4,y:player.y+4,w:10,h:10,dx:d.dx,dy:d.dy,life:80});
+  }
+  if(player.sub==='bow'){
+    if(player.arrows<=0) return showMessage('Out of arrows!');
+    player.arrows--; updateHUD(); sound('sword');
+    const d={0:{dx:0,dy:-7},1:{dx:7,dy:0},2:{dx:0,dy:7},3:{dx:-7,dy:0}}[player.dir];
+    projectiles.push({type:'arrow',x:player.x+6,y:player.y+6,w:6,h:6,dx:d.dx,dy:d.dy,life:80,owner:'player'});
+  }
+}
+
+function interact(){
+  if(gameState==='ow'){
+    const map=getCurrentOWMap();
+    const tx=Math.floor((player.x+player.w/2)/TILE), ty=Math.floor((player.y+player.h/2)/TILE);
+    const tile=(map[ty]||[])[tx];
+    if(tile===5) return enterDungeon(0);
+    if(tile===6) return enterDungeon(1);
+    if(tile===7) return enterDungeon(2);
+    if(tile===8){ if(!player.hasBoom){ player.hasBoom=true; player.sub='boomerang'; updateHUD(); sound('pick'); showMessage('You found the Boomerang!'); } else showMessage('An old cave. Nothing more.'); }
+    if(tile===9){ showMessage('Sign: "3 Dungeons, 3 Fragments, 1 Hero."'); }
+  }
+  if(gameState==='dungeon'){
+    const map=getCurrentDungeonRoom();
+    const cx=Math.floor((player.x+player.w/2)/TILE); const cy=Math.floor((player.y+player.h/2)/TILE);
+    const tile=(map[cy]||[])[cx];
+    if(tile===6) return openChest();
+    if(tile===2) return unlockDoor();
+    if(tile===5 && dungeonRoom==='0,0') return exitDungeon();
+  }
+}
+
+function startOWTransition(dir){
+  let nx=currentScreenX, ny=currentScreenY;
+  if(dir==='west') nx--; if(dir==='east') nx++; if(dir==='north') ny--; if(dir==='south') ny++;
+  if(nx<0||nx>=OW_COLS||ny<0||ny>=OW_ROWS){
+    if(dir==='west') player.x=4; if(dir==='east') player.x=WIDTH-player.w-4;
+    if(dir==='north') player.y=4; if(dir==='south') player.y=HEIGHT-player.h-4;
+    return;
+  }
+  transition={fromX:currentScreenX,fromY:currentScreenY,toX:nx,toY:ny,progress:0,dir};
+  gameState='transition';
+}
+
+function finishTransition(){
+  currentScreenX=transition.toX; currentScreenY=transition.toY;
+  const dir=transition.dir;
+  if(dir==='west') player.x=WIDTH-player.w-6;
+  if(dir==='east') player.x=6;
+  if(dir==='north') player.y=HEIGHT-player.h-6;
+  if(dir==='south') player.y=6;
+  transition=null; gameState='ow'; spawnOWEnemies(); mmUpdate();
+}
+
+function movePlayer(){
+  if(gameState==='title' || gameState==='gameover' || gameState==='win') return;
+  let dx=0,dy=0;
+  if(keys.ArrowLeft||keys.a||keys.A){dx=-1; player.dir=3;}
+  if(keys.ArrowRight||keys.d||keys.D){dx=1; player.dir=1;}
+  if(keys.ArrowUp||keys.w||keys.W){dy=-1; player.dir=0;}
+  if(keys.ArrowDown||keys.s||keys.S){dy=1; player.dir=2;}
+  const walking = dx!==0 || dy!==0;
+  player.moving = walking;
+  if(dx&&dy){dx*=Math.SQRT1_2; dy*=Math.SQRT1_2;}
+  const map = gameState==='ow'?getCurrentOWMap():getCurrentDungeonRoom();
+  const sol = gameState==='ow'?isSolidOW:isSolidDungeon;
+  const speed=player.speed;
+  if(player.inv>0) player.inv--;
+  const nx=player.x+dx*speed, ny=player.y+dy*speed;
+  if(!collides(nx+2,player.y+2,player.w-4,player.h-4,map,sol)) player.x=nx;
+  if(!collides(player.x+2,ny+2,player.w-4,player.h-4,map,sol)) player.y=ny;
+  if(gameState==='ow'){
+    if(player.x<-8) startOWTransition('west');
+    else if(player.x>WIDTH-player.w+8) startOWTransition('east');
+    else if(player.y<-8) startOWTransition('north');
+    else if(player.y>HEIGHT-player.h+8) startOWTransition('south');
+  }
+  if(gameState==='dungeon' && !roomBlocked){
+    if(dungeonRoom==='0,0' && player.y<-10) changeDungeonRoom('1,0','south');
+    if(dungeonRoom==='1,0' && player.y<-10 && getCurrentDungeonRoom()[0][7]===3) changeDungeonRoom('2,0','south');
+    if(dungeonRoom==='1,0' && player.y>HEIGHT-player.h+10) changeDungeonRoom('0,0','north');
+    if(dungeonRoom==='2,0' && player.y>HEIGHT-player.h+10) changeDungeonRoom('1,0','north');
+  }
+}
+
+function updateBombs(){
+  for(let i=bombs.length-1;i>=0;i--){
+    const b=bombs[i]; b.life--;
+    if(b.life<=0){
+      sound('bomb'); explosions.push({x:b.x-24,y:b.y-24,w:56,h:56,life:24});
+      for(let j=enemies.length-1;j>=0;j--){ if(overlap({x:b.x-24,y:b.y-24,w:56,h:56},enemies[j])) hitEnemy(j,2,0,0); }
+      bombs.splice(i,1);
+      continue;
+    }
+  }
+  for(let i=explosions.length-1;i>=0;i--){ explosions[i].life--; if(explosions[i].life<=0) explosions.splice(i,1); }
+}
+
+function updateProjectiles(){
+  const map = gameState==='ow'?getCurrentOWMap():getCurrentDungeonRoom();
+  const sol = gameState==='ow'?isSolidOW:isSolidDungeon;
+  for(let i=projectiles.length-1;i>=0;i--){
+    const p=projectiles[i]; p.life--; if(p.life<=0){ if(p.type==='boomerang') player.sub='boomerang'; projectiles.splice(i,1); continue; }
+    let nx=p.x+p.dx, ny=p.y+p.dy;
+    if(collides(nx,ny,p.w,p.h,map,sol)){
+      if(p.type==='boomerang'){ p.dx=-p.dx; p.dy=-p.dy; }
+      else { projectiles.splice(i,1); continue; }
+    } else { p.x=nx; p.y=ny; }
+    if(p.type==='boomerang' && p.life<40){ const tx=player.x+player.w/2-p.x-p.w/2; const ty=player.y+player.h/2-p.y-p.h/2; const d=Math.hypot(tx,ty)||1; p.dx=tx/d*4; p.dy=ty/d*4; if(Math.hypot(tx,ty)<6){ projectiles.splice(i,1); continue; } }
+    if(p.owner==='player'){
+      for(let j=enemies.length-1;j>=0;j--){ if(overlap(p,enemies[j])){ hitEnemy(j,1,p.dx*0.4,p.dy*0.4); if(p.type!=='boomerang') projectiles.splice(i,1); break; } }
+    }
+  }
+}
+
+function updateEnemies(){
+  const map = gameState==='ow'?getCurrentOWMap():getCurrentDungeonRoom();
+  const sol = gameState==='ow'?isSolidOW:isSolidDungeon;
+  for(const e of enemies){
+    if(e.inv>0) e.inv--;
+    if(e.stun>0){ e.stun--; continue; }
+    e.tm++;
+    const dx=player.x-e.x, dy=player.y-e.y, dist=Math.hypot(dx,dy);
+    if(e.type==='octorok'){
+      if(e.tm%45===0){
+        if(dist<120 && (Math.abs(dx)<10 || Math.abs(dy)<10)){
+          const aim = dist||1;
+          projectiles.push({type:'rock',x:e.x+5,y:e.y+5,w:8,h:8,dx:(dx/aim)*3,dy:(dy/aim)*3,life:80,owner:'enemy'});
+        } else {
+          const dir=[[-1,0],[1,0],[0,-1],[0,1]][Math.floor(Math.random()*4)];
+          e.dx=dir[0]; e.dy=dir[1];
+        }
+      }
+      moveEnemy(e,map,sol);
+    }
+    if(e.type==='moblin'){
+      if(dist<110 && e.tm%25===0){ e.dx=Math.sign(dx); e.dy=Math.sign(dy); }
+      if(e.tm%90===0 && dist>140){ const dir=[[-1,0],[1,0],[0,-1],[0,1]][Math.floor(Math.random()*4)]; e.dx=dir[0]; e.dy=dir[1]; }
+      moveEnemy(e,map,sol);
+    }
+    if(e.type==='stalfos'){
+      if(dist<90){ e.dx=Math.sign(dx); e.dy=Math.sign(dy); }
+      else if(e.tm%40===0){ const dir=[[-1,0],[1,0],[0,-1],[0,1]][Math.floor(Math.random()*4)]; e.dx=dir[0]; e.dy=dir[1]; }
+      moveEnemy(e,map,sol);
+    }
+    if(e.type==='wizzrobe'){
+      if(e.tm%100===0){ e.x = 2*TILE + Math.random()*(COLS-6)*TILE; e.y = 2*TILE + Math.random()*(ROWS-6)*TILE; }
+      if(e.tm%70===0){ shootEnemy(e,3); }
+    }
+    if(e.type==='darknut'){
+      if(e.tm%60===0){ e.dx=Math.sign(dx); e.dy=Math.sign(dy); }
+      moveEnemy(e,map,sol);
+    }
+    if(e.type==='boss'){
+      if(e.sub==='aquamentus'){
+        e.angle=(e.angle||0)+.03;
+        const nx=e.x+Math.cos(e.angle)*1.4, ny=e.y+Math.sin(e.angle)*1.4;
+        if(!collides(nx,e.y,e.w,e.h,map,sol)) e.x=nx; else e.angle+=Math.PI;
+        if(!collides(e.x,ny,e.w,e.h,map,sol)) e.y=ny; else e.angle+=Math.PI;
+        if(e.tm%80===0) shootBoss(e,3,3);
+      }
+      if(e.sub==='dodongo'){
+        if(e.tm%60===0){ const d=dist||1; e.dx=dx/d; e.dy=dy/d; }
+        moveEnemy(e,map,sol);
+        if(e.tm%90===0) shootEnemy(e,3.4);
+      }
+      if(e.sub==='ganon'){
+        if(e.tm%120===0){ e.x = 3*TILE + 3; e.y = 3*TILE + 3; }
+        if(e.tm%70===0) shootBoss(e,4, e.hp<e.mhp/2?7:5);
+      }
+    }
+    if(overlap(e,player) && player.inv===0){ hurtPlayer(e.type==='boss'?2:1); }
+  }
+}
+
+function moveEnemy(e,map,sol){
+  const nx=e.x+e.dx*e.spd, ny=e.y+e.dy*e.spd;
+  if(!collides(nx,ny,e.w,e.h,map,sol)){
+    e.x=nx; e.y=ny;
+  } else {
+    e.dx=-e.dx; e.dy=-e.dy;
+    if(Math.random()<.3){ const dir=[[-1,0],[1,0],[0,-1],[0,1]][Math.floor(Math.random()*4)]; e.dx=dir[0]; e.dy=dir[1]; }
+  }
+}
+
+function shootEnemy(e,speed){
+  const dx=player.x-e.x, dy=player.y-e.y; const d=Math.hypot(dx,dy)||1;
+  projectiles.push({type:'rock',x:e.x+6,y:e.y+6,w:8,h:8,dx:(dx/d)*speed,dy:(dy/d)*speed,life:80,owner:'enemy'});
+}
+
+function shootBoss(e,speed,count){
+  for(let k=0;k<count;k++){
+    const ang=(Math.PI*2/count)*k;
+    const px=e.x+e.w/2-5, py=e.y+e.h/2-5;
+    projectiles.push({type:'fireball',x:px,y:py,w:10,h:10,dx:Math.cos(ang)*speed,dy:Math.sin(ang)*speed,life:100,owner:'enemy'});
+  }
+}
+
+function updateDrops(){
+  for(let i=drops.length-1;i>=0;i--){
+    const d=drops[i];
+    d.life--;
+    if(d.life<=0){ drops.splice(i,1); continue; }
+    if(overlap({x:player.x,y:player.y,w:player.w,h:player.h}, {x:d.x,y:d.y,w:12,h:12})){
+      sound('pick');
+      if(d.type==='rupee') player.rupees+=1;
+      if(d.type==='heart') player.hp=Math.min(player.maxHp,player.hp+2);
+      if(d.type==='bomb') player.bombs+=1;
+      if(d.type==='arrow') player.arrows+=3;
+      if(d.type==='key') player.keys+=1;
+      if(d.type==='triforce'){
+        player.triforce += 1;
+        if(player.triforce>=3){ sound('win'); gameState='win'; showMessage('You collected all 3 fragments! Zelda is saved!'); }
+      }
+      updateHUD();
+      drops.splice(i,1);
+    }
+  }
+}
+
+function updateParticles(){ particles.forEach(p=>{ p.x+=p.dx; p.y+=p.dy; p.dy+=.08; p.life--; }); particles = particles.filter(p=>p.life>0); }
+
+function interactableHint(){
+  if(gameState==='ow'){
+    const map=getCurrentOWMap(); const tx=Math.floor((player.x+player.w/2)/TILE), ty=Math.floor((player.y+player.h/2)/TILE); const tile=(map[ty]||[])[tx];
+    if(tile===5||tile===6||tile===7) return '[ENTER] Enter Dungeon';
+    if(tile===8) return '[ENTER] Search Cave';
+    if(tile===9) return '[ENTER] Read Sign';
+  }
+  if(gameState==='dungeon'){
+    const map=getCurrentDungeonRoom(); const tx=Math.floor((player.x+player.w/2)/TILE), ty=Math.floor((player.y+player.h/2)/TILE); const tile=(map[ty]||[])[tx];
+    if(tile===6) return '[ENTER] Open Chest';
+    if(tile===2) return player.keys>0?'[ENTER] Use Key':'Locked door';
+    if(tile===5) return '[ENTER] Exit Dungeon';
+  }
+  return '';
+}
+
+function update(){
+  frame++;
+  movePlayer();
+  updateSword(); updateBombs(); updateProjectiles(); updateEnemies(); updateDrops(); updateParticles();
+  if(messageTimer>0){ messageTimer--; if(messageTimer===0) msgText.textContent=''; }
+  if(gameState==='transition'){
+    transition.progress += 0.04;
+    if(transition.progress>=1) finishTransition();
+  }
+}
+
+function drawTile(x,y,tile,isDungeon){
+  const px=x*TILE, py=y*TILE;
+  if(isDungeon){
+    if(tile===0){ ctx.fillStyle=palette.dng; ctx.fillRect(px,py,TILE,TILE); ctx.fillStyle='#2a2a2a'; ctx.fillRect(px+4,py+4,24,24); }
+    else if(tile===1){ ctx.fillStyle=palette.wall; ctx.fillRect(px,py,TILE,TILE); ctx.fillStyle='#333'; ctx.fillRect(px+2,py+2,28,28); ctx.fillStyle='#2a2a2a'; ctx.fillRect(px+4,py+4,20,20); }
+    else if(tile===2){ ctx.fillStyle='#4d2c0a'; ctx.fillRect(px,py,TILE,TILE); ctx.fillStyle='#6f3f16'; ctx.fillRect(px+6,py+10,20,4); ctx.fillRect(px+6,py+18,20,4); }
+    else if(tile===3){ ctx.fillStyle=palette.floor; ctx.fillRect(px,py,TILE,TILE); ctx.fillStyle='#2a2a2a'; ctx.fillRect(px+6,py+6,20,20); }
+    else if(tile===5){ ctx.fillStyle=palette.gold; ctx.fillRect(px,py,TILE,TILE); ctx.fillStyle=palette.black; ctx.fillRect(px+8,py+10,12,4); ctx.fillRect(px+6,py+6,20,4); }
+    else if(tile===6){ ctx.fillStyle='#5a3d1e'; ctx.fillRect(px,py,TILE,TILE); ctx.fillStyle=palette.gold; ctx.fillRect(px+6,py+8,20,6); ctx.fillRect(px+10,py+14,12,8); }
+    else if(tile===7){ ctx.fillStyle=palette.gold; ctx.fillRect(px,py,TILE,TILE); ctx.fillStyle=palette.floor; ctx.beginPath(); ctx.moveTo(px+16,py+4); ctx.lineTo(px+4,py+28); ctx.lineTo(px+28,py+28); ctx.closePath(); ctx.fill(); }
+    else { ctx.fillStyle=palette.dng; ctx.fillRect(px,py,TILE,TILE); }
+  } else {
+    if(tile===0){ ctx.fillStyle=palette.grass; ctx.fillRect(px,py,TILE,TILE); ctx.fillStyle=palette.grass2; if((x+y)%3===0){ ctx.fillRect(px+6,py+6,4,4); ctx.fillRect(px+18,py+18,3,3); } }
+    else if(tile===1){ ctx.fillStyle=palette.wall; ctx.fillRect(px,py,TILE,TILE); ctx.fillStyle='#3a3a3a'; ctx.fillRect(px+4,py+4,24,24); ctx.fillStyle='#222'; ctx.fillRect(px+8,py+8,12,12); }
+    else if(tile===2){ ctx.fillStyle=palette.water; ctx.fillRect(px,py,TILE,TILE); ctx.fillStyle=palette.water; ctx.fillRect(px+2,py+6,28,3); ctx.fillRect(px+2,py+16,28,3); ctx.fillRect(px+2,py+26,28,2); }
+    else if(tile===3){ ctx.fillStyle=palette.stone; ctx.fillRect(px,py,TILE,TILE); ctx.fillStyle='#444'; ctx.fillRect(px+4,py+4,24,24); ctx.fillStyle='#2d2d2d'; ctx.fillRect(px+6,py+6,20,20); }
+    else if(tile===4){ ctx.fillStyle=palette.wood; ctx.fillRect(px,py,TILE,TILE); ctx.fillStyle='#4a2200'; ctx.fillRect(px+8,py+8,16,16); ctx.fillStyle='#6b3b11'; ctx.fillRect(px+10,py+10,12,12); }
+    else if(tile===5||tile===6||tile===7){ ctx.fillStyle=palette.gold; ctx.fillRect(px,py,TILE,TILE); ctx.fillStyle='#000'; ctx.fillRect(px+10,py+6,12,12); ctx.fillStyle='#fff'; ctx.fillRect(px+12,py+8,8,8); }
+    else if(tile===8){ ctx.fillStyle=palette.wall; ctx.fillRect(px,py,TILE,TILE); ctx.fillStyle=palette.black; ctx.fillRect(px+6,py+8,20,16); ctx.fillStyle='#999'; ctx.fillRect(px+10,py+10,12,8); }
+    else if(tile===9){ ctx.fillStyle=palette.wall; ctx.fillRect(px,py,TILE,TILE); ctx.fillStyle='#222'; ctx.fillRect(px+4,py+4,24,24); ctx.fillStyle='#fff'; ctx.fillRect(px+10,py+8,12,12); }
+  }
+}
+
+function drawPlayer(){
+  const x=player.x|0, y=player.y|0;
+  if(player.inv>0 && Math.floor(player.inv/6)%2===1) return;
+  const frameStep = player.moving ? Math.floor(frame/10)%2 : 0;
+  const legY = y+12 + frameStep;
+  ctx.fillStyle='#2b6a24'; ctx.fillRect(x+4,y+4,6,8); // tunic
+  ctx.fillStyle='#094f12'; ctx.fillRect(x+4,y+10,6,4); // belt shading
+  ctx.fillStyle='#5cc'; ctx.fillRect(x+2,y+4,2,6); ctx.fillRect(x+12,y+4,2,6); // sleeves
+  ctx.fillStyle='#e0d18c'; ctx.fillRect(x+5,y+1,4,4); // hat top
+  ctx.fillStyle='#194012'; ctx.fillRect(x+4,y+5,8,4); // shoulders
+  ctx.fillStyle='#111'; ctx.fillRect(x+5,y+8,1,1); ctx.fillRect(x+8,y+8,1,1); // eyes
+  ctx.fillStyle='#3a1f08'; ctx.fillRect(x+5,legY,3,4); ctx.fillRect(x+8,legY,3,4); // legs
+  if(player.dir===0){ ctx.fillStyle='#886633'; ctx.fillRect(x+5,y-2,4,8); }
+  if(player.dir===2){ ctx.fillStyle='#886633'; ctx.fillRect(x+5,y+14,4,8); }
+  if(player.dir===1){ ctx.fillStyle='#886633'; ctx.fillRect(x+12,y+6,6,3); }
+  if(player.dir===3){ ctx.fillStyle='#886633'; ctx.fillRect(x-2,y+6,6,3); }
+}
+
+function drawSword(){ if(!sword) return; ctx.fillStyle='#e4d290'; ctx.fillRect(sword.x|0,sword.y|0,sword.w,sword.h); ctx.fillStyle='#aaa'; ctx.fillRect(sword.x|0 + 2,sword.y|0 + 2,2,2); }
+
+function drawEnemies(){
+  enemies.forEach(e=>{
+    if(e.inv>0 && Math.floor(e.inv/4)%2===1) return;
+    const x=e.x|0, y=e.y|0;
+    if(e.type==='octorok'){
+      ctx.fillStyle=palette.enemy1; ctx.fillRect(x,y,14,14);
+      ctx.fillStyle='#222'; ctx.fillRect(x+3,y+5,8,6);
+      ctx.fillStyle='#fff'; ctx.fillRect(x+4,y+6,2,2); ctx.fillRect(x+8,y+6,2,2);
+    } else if(e.type==='moblin'){
+      ctx.fillStyle=palette.enemy2; ctx.fillRect(x,y,14,16);
+      ctx.fillStyle='#551100'; ctx.fillRect(x+2,y+4,10,6);
+      ctx.fillStyle='#111'; ctx.fillRect(x+4,y+6,2,2); ctx.fillRect(x+8,y+6,2,2);
+      ctx.fillStyle='#ffd'; ctx.fillRect(x+5,y+12,4,2);
+    } else if(e.type==='stalfos'){
+      ctx.fillStyle='#ddd'; ctx.fillRect(x,y,14,16);
+      ctx.fillStyle='#888'; ctx.fillRect(x+3,y+4,8,6);
+      ctx.fillStyle='#111'; ctx.fillRect(x+5,y+8,2,2); ctx.fillRect(x+8,y+8,2,2);
+    } else if(e.type==='wizzrobe'){
+      ctx.fillStyle=palette.enemy3; ctx.fillRect(x,y,14,16);
+      ctx.fillStyle='#220055'; ctx.fillRect(x+2,y+2,10,10);
+      ctx.fillStyle='#ff8'; ctx.fillRect(x+4,y+8,6,4);
+    } else if(e.type==='darknut'){
+      ctx.fillStyle='#555'; ctx.fillRect(x,y,18,18);
+      ctx.fillStyle='#777'; ctx.fillRect(x+2,y+4,14,10);
+      ctx.fillStyle='#222'; ctx.fillRect(x+5,y+8,2,2); ctx.fillRect(x+11,y+8,2,2);
+    } else if(e.type==='boss'){
+      const color = e.sub==='aquamentus' ? '#882222' : e.sub==='dodongo' ? '#664400' : '#660066';
+      ctx.fillStyle=color; ctx.fillRect(x,y, e.w, e.h);
+      ctx.fillStyle='#000'; ctx.fillRect(x+4,y+4, e.w-8, e.h-8);
+      ctx.fillStyle='#ffb'; ctx.fillRect(x+6,y+6,4,4); ctx.fillRect(x+e.w-10,y+6,4,4);
+    } else {
+      ctx.fillStyle=palette.enemy1; ctx.fillRect(x,y,e.w,e.h);
+    }
+    if(gameState==='dungeon' && e.type!=='boss'){
+      const bw=e.w*(e.hp/e.mhp);
+      ctx.fillStyle='#300'; ctx.fillRect(x,y-4,e.w,3);
+      ctx.fillStyle='#f00'; ctx.fillRect(x,y-4,bw,3);
+    }
+  });
+}
+
+function drawBombs(){ bombs.forEach(b=>{ ctx.fillStyle='#111'; ctx.fillRect(b.x,b.y,12,12); ctx.fillStyle='#f90'; ctx.fillRect(b.x+4,b.y+2,4,8); }); }
+function drawExplosions(){ explosions.forEach(ex=>{ ctx.globalAlpha=ex.life/24; ctx.fillStyle='#ff5500'; ctx.fillRect(ex.x,ex.y,ex.w,ex.h); ctx.globalAlpha=1; }); }
+function drawDrops(){ drops.forEach(d=>{ const x=d.x|0,y=d.y|0; if(d.type==='rupee'){ ctx.fillStyle=palette.rupee; ctx.fillRect(x,y,8,12);} if(d.type==='heart'){ ctx.fillStyle=palette.heart; ctx.fillRect(x,y+2,10,8); ctx.fillRect(x+2,y,6,6);} if(d.type==='key'){ ctx.fillStyle=palette.key; ctx.fillRect(x,y,10,10); ctx.fillRect(x+8,y+4,8,4); } if(d.type==='triforce'){ ctx.fillStyle=palette.gold; ctx.beginPath(); ctx.moveTo(x+8,y); ctx.lineTo(x+16,y+16); ctx.lineTo(x, y+16); ctx.closePath(); ctx.fill(); }}); }
+function drawProjectiles(){ projectiles.forEach(p=>{ ctx.fillStyle=p.type==='arrow'?palette.arrow:p.type==='boomerang'?palette.boom:'#ff4400'; ctx.fillRect(p.x|0,p.y|0,p.w,p.h); }); }
+function drawParticles(){ particles.forEach(p=>{ ctx.globalAlpha=p.life/24; ctx.fillStyle=p.color; ctx.fillRect(p.x|0,p.y|0,p.size,p.size); ctx.globalAlpha=1; }); }
+
+function drawMap(map,isDungeon){ for(let y=0;y<ROWS;y++) for(let x=0;x<COLS;x++) drawTile(x,y,map[y][x],isDungeon); }
+
+function drawMinimap(){ mmCtx.fillStyle='#111'; mmCtx.fillRect(0,0,72,60);
+  if(gameState==='dungeon'){
+    ['0,0','1,0','2,0'].forEach((rk,i)=>{
+      const state=dungeonState[inDungeonIndex]; const filled=state.cleared && state.cleared[rk]; mmCtx.fillStyle = (rk===dungeonRoom)?'#ff0': filled?'#2f8':'#444'; mmCtx.fillRect(16,6+i*16,40,10); mmCtx.strokeStyle='#000'; mmCtx.strokeRect(16,6+i*16,40,10);
+    });
+  } else {
+    const cellW=72/OW_COLS, cellH=60/OW_ROWS;
+    for(let sy=0;sy<OW_ROWS;sy++) for(let sx=0;sx<OW_COLS;sx++){
+      const screen=getOWScreen(sx,sy);
+      const hasEntrance=screen.flat().some(t=>t===5||t===6||t===7);
+      mmCtx.fillStyle=(sx===currentScreenX&&sy===currentScreenY)?'#ff0': hasEntrance?'#44f':'#1f3';
+      mmCtx.fillRect(sx*cellW+1, sy*cellH+1, cellW-2, cellH-2);
+    }
+    mmCtx.fillStyle='#fff'; mmCtx.fillRect(currentScreenX*cellW+cellW/2-1, currentScreenY*cellH+cellH/2-1, 3,3);
+  }
+}
+
+function drawOverlay(){ if(gameState==='title') return; const hint=interactableHint(); if(hint){ ctx.fillStyle='rgba(0,0,0,.55)'; ctx.fillRect(140,HEIGHT-40,232,24); ctx.fillStyle='#fff'; ctx.font='11px monospace'; ctx.textAlign='center'; ctx.fillText(hint, WIDTH/2, HEIGHT-22); ctx.textAlign='left'; }}
+
+function draw(){ ctx.clearRect(0,0,WIDTH,HEIGHT);
+  if(gameState==='title'){ ctx.fillStyle='#040404'; ctx.fillRect(0,0,WIDTH,HEIGHT); return; }
+  if(gameState==='transition'){
+    const progress=transition.progress; const from=getOWScreen(transition.fromX,transition.fromY); const to=getOWScreen(transition.toX,transition.toY);
+    const offset = progress*WIDTH;
+    if(transition.dir==='west'){ ctx.save(); ctx.translate(offset,0); drawMap(from,false); ctx.restore(); ctx.save(); ctx.translate(offset-WIDTH,0); drawMap(to,false); ctx.restore(); }
+    if(transition.dir==='east'){ ctx.save(); ctx.translate(-offset,0); drawMap(from,false); ctx.restore(); ctx.save(); ctx.translate(WIDTH-offset,0); drawMap(to,false); ctx.restore(); }
+    if(transition.dir==='north'){ ctx.save(); ctx.translate(0,offset); drawMap(from,false); ctx.restore(); ctx.save(); ctx.translate(0,offset-HEIGHT); drawMap(to,false); ctx.restore(); }
+    if(transition.dir==='south'){ ctx.save(); ctx.translate(0,-offset); drawMap(from,false); ctx.restore(); ctx.save(); ctx.translate(0,HEIGHT-offset); drawMap(to,false); ctx.restore(); }
+    drawPlayer(); return;
+  }
+  const map = gameState==='ow'?getCurrentOWMap():getCurrentDungeonRoom(); drawMap(map, gameState==='dungeon'); drawDrops(); drawBombs(); drawExplosions(); drawProjectiles(); drawEnemies(); drawPlayer(); drawSword(); drawParticles(); drawOverlay();
+  if(gameState==='gameover'){ ctx.fillStyle='rgba(0,0,0,.8)'; ctx.fillRect(0,0,WIDTH,HEIGHT); ctx.fillStyle='#f44'; ctx.font='bold 34px monospace'; ctx.textAlign='center'; ctx.fillText('GAME OVER', WIDTH/2, HEIGHT/2-10); ctx.fillStyle='#ccc'; ctx.font='14px monospace'; ctx.fillText('Press R to restart', WIDTH/2, HEIGHT/2+24); ctx.textAlign='left'; }
+  if(gameState==='win'){ ctx.fillStyle='rgba(0,0,0,.88)'; ctx.fillRect(0,0,WIDTH,HEIGHT); ctx.fillStyle=palette.gold; ctx.font='bold 30px monospace'; ctx.textAlign='center'; ctx.fillText('ZELDA IS SAVED!', WIDTH/2, HEIGHT/2-20); ctx.fillStyle='#ccc'; ctx.font='14px monospace'; ctx.fillText(`Rupees: ${player.rupees}   Triforce: ${player.triforce}/3`, WIDTH/2, HEIGHT/2+10); ctx.fillText('Press R to play again', WIDTH/2, HEIGHT/2+36); ctx.textAlign='left'; }
+}
+
+function handleActions(){
+  if(gameState==='ow' || gameState==='dungeon'){
+    if((keys.z||keys.Z||keys[' ']) && !keys._sword){ swingSword(); keys._sword=true; }
+    if((keys.x||keys.X) && !keys._bomb){ placeBomb(); keys._bomb=true; }
+    if((keys.c||keys.C) && !keys._sub){ throwItem(); keys._sub=true; }
+    if(keys.Enter && !keys._enter){ interact(); keys._enter=true; }
+  }
+  if(keys.r||keys.R){ if(gameState==='gameover' || gameState==='win'){ resetGame(); } keys._restart=true; }
+}
+
+function releaseActions(){ if(!keys.z && !keys.Z && !keys[' ']) keys._sword=false; if(!keys.x && !keys.X) keys._bomb=false; if(!keys.c && !keys.C) keys._sub=false; if(!keys.Enter) keys._enter=false; if(!keys.r && !keys.R) keys._restart=false; }
+
+function mmUpdate(){ drawMinimap(); }
+
+function gameLoop(){ handleActions(); update(); draw(); updateHUD(); mmUpdate(); releaseActions(); requestAnimationFrame(gameLoop); }
+
+window.addEventListener('keydown',e=>{ if(e.key==='Enter' && gameState==='title') startGame(); });
+
+gameLoop();
+</script>
+</body>
+</html>
