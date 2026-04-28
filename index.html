@@ -802,46 +802,80 @@ function drawPlayer(){
 
 function drawSword(){ if(!sword) return; ctx.fillStyle='#e4d290'; ctx.fillRect(sword.x|0,sword.y|0,sword.w,sword.h); ctx.fillStyle='#aaa'; ctx.fillRect(sword.x|0 + 2,sword.y|0 + 2,2,2); }
 
-function drawEnemies(){
-  enemies.forEach(e=>{
-    if(e.inv>0 && Math.floor(e.inv/4)%2===1) return;
-    const x=e.x|0, y=e.y|0;
-    if(e.type==='octorok'){
-      ctx.fillStyle=palette.enemy1; ctx.fillRect(x,y,14,14);
-      ctx.fillStyle='#222'; ctx.fillRect(x+3,y+5,8,6);
-      ctx.fillStyle='#fff'; ctx.fillRect(x+4,y+6,2,2); ctx.fillRect(x+8,y+6,2,2);
-    } else if(e.type==='moblin'){
-      ctx.fillStyle=palette.enemy2; ctx.fillRect(x,y,14,16);
-      ctx.fillStyle='#551100'; ctx.fillRect(x+2,y+4,10,6);
-      ctx.fillStyle='#111'; ctx.fillRect(x+4,y+6,2,2); ctx.fillRect(x+8,y+6,2,2);
-      ctx.fillStyle='#ffd'; ctx.fillRect(x+5,y+12,4,2);
-    } else if(e.type==='stalfos'){
-      ctx.fillStyle='#ddd'; ctx.fillRect(x,y,14,16);
-      ctx.fillStyle='#888'; ctx.fillRect(x+3,y+4,8,6);
-      ctx.fillStyle='#111'; ctx.fillRect(x+5,y+8,2,2); ctx.fillRect(x+8,y+8,2,2);
-    } else if(e.type==='wizzrobe'){
-      ctx.fillStyle=palette.enemy3; ctx.fillRect(x,y,14,16);
-      ctx.fillStyle='#220055'; ctx.fillRect(x+2,y+2,10,10);
-      ctx.fillStyle='#ff8'; ctx.fillRect(x+4,y+8,6,4);
-    } else if(e.type==='darknut'){
-      ctx.fillStyle='#555'; ctx.fillRect(x,y,18,18);
-      ctx.fillStyle='#777'; ctx.fillRect(x+2,y+4,14,10);
-      ctx.fillStyle='#222'; ctx.fillRect(x+5,y+8,2,2); ctx.fillRect(x+11,y+8,2,2);
-    } else if(e.type==='boss'){
-      const color = e.sub==='aquamentus' ? '#882222' : e.sub==='dodongo' ? '#664400' : '#660066';
-      ctx.fillStyle=color; ctx.fillRect(x,y, e.w, e.h);
-      ctx.fillStyle='#000'; ctx.fillRect(x+4,y+4, e.w-8, e.h-8);
-      ctx.fillStyle='#ffb'; ctx.fillRect(x+6,y+6,4,4); ctx.fillRect(x+e.w-10,y+6,4,4);
-    } else {
-      ctx.fillStyle=palette.enemy1; ctx.fillRect(x,y,e.w,e.h);
-    }
-    if(gameState==='dungeon' && e.type!=='boss'){
-      const bw=e.w*(e.hp/e.mhp);
-      ctx.fillStyle='#300'; ctx.fillRect(x,y-4,e.w,3);
-      ctx.fillStyle='#f00'; ctx.fillRect(x,y-4,bw,3);
-    }
-  });
+function dBoss(e,f){
+  const x=e.x|0,y=e.y|0,w=e.w,h=e.h;
+  const pl=(Math.abs(Math.sin(f*.1))*5)|0;
+  if(e.sub==='aquamentus'){
+    ctx.fillStyle=e.hp<e.mhp/2?palette.bossl:palette.boss;ctx.fillRect(x,y,w+pl,h+pl);
+    ctx.fillStyle='#ff6600';ctx.fillRect(x+4,y+4,9,9);ctx.fillRect(x+w-8,y+4,9,9);
+    ctx.fillStyle=palette.bl;ctx.fillRect(x+6,y+6,5,5);ctx.fillRect(x+w-6,y+6,5,5);
+    ctx.fillStyle='#cc2200';ctx.fillRect(x+5,y+h-7,w-10,6);
+    ctx.fillStyle=palette.go;ctx.fillRect(x+w/2-2,y-10,4,10);
+  } else if(e.sub==='dodongo'){
+    ctx.fillStyle=e.hp<e.mhp/2?'#ff6600':'#883300';ctx.fillRect(x,y,w,h);
+    ctx.fillStyle='#cc5500';ctx.fillRect(x+2,y+2,w-4,h-4);
+    ctx.fillStyle='#ffaa00';ctx.fillRect(x+4,y+4,10,10);ctx.fillRect(x+w-13,y+4,10,10);
+    ctx.fillStyle=palette.bl;ctx.fillRect(x+6,y+6,6,6);ctx.fillRect(x+w-11,y+6,6,6);
+    for(let si=0;si<3;si++)for(let sj=0;sj<4;sj++){ctx.fillStyle=(si+sj)%2?'#772200':'#993300';ctx.fillRect(x+sj*8+2,y+h-9-si*7,7,6);}
+  } else {
+    ctx.fillStyle=e.hp<e.mhp/2?'#cc00cc':'#550055';ctx.fillRect(x,y,w+pl,h+pl);
+    ctx.fillStyle='#770077';ctx.fillRect(x+2,y+2,w-4,h-4);
+    ctx.fillStyle=e.hp<e.mhp/2?'#ff00ff':'#ff3300';
+    ctx.fillRect(x+5,y+6,8,8);ctx.fillRect(x+w-11,y+6,8,8);
+    ctx.fillStyle=palette.bl;ctx.fillRect(x+7,y+8,4,4);ctx.fillRect(x+w-9,y+8,4,4);
+    ctx.fillStyle='#aa00aa';ctx.beginPath();ctx.moveTo(x,y+h);ctx.lineTo(x-12,y+h+12);ctx.lineTo(x+w+12,y+h+12);ctx.lineTo(x+w,y+h);ctx.closePath();ctx.fill();
+    ctx.fillStyle=palette.go;for(let ci=0;ci<5;ci++)ctx.fillRect(x+4+ci*7,y-7,5,8);
+  }
+  ctx.fillStyle='#1a0000';ctx.fillRect(T,H-T+4,W-T*2,8);
+  ctx.fillStyle=e.hp<e.mhp/2?'#ff2200':'#880000';
+  ctx.fillRect(T,H-T+4,(W-T*2)*(e.hp/e.mhp),8);
+  ctx.fillStyle='#fff';ctx.font='7px monospace';
+  ctx.fillText(`${e.sub.toUpperCase()} HP: ${e.hp}/${e.mhp}`,T+4,H-T+12);
 }
+
+function drawEn(e,f){
+  const x=e.x|0,y=e.y|0,w=e.w,h=e.h;
+  if(e.inv>0&&Math.floor(e.inv/4)%2===1)ctx.globalAlpha=.3;
+  if(e.type==='boss')dBoss(e,f);
+  else if(e.type==='octorok'){
+    ctx.fillStyle=palette.e1;ctx.fillRect(x,y,w,h);
+    ctx.fillStyle='#ff6666';ctx.fillRect(x+2,y+2,w-4,7);
+    ctx.fillStyle=palette.bl;ctx.fillRect(x+3,y+4,3,3);ctx.fillRect(x+8,y+4,3,3);
+    ctx.fillStyle='#ff2222';ctx.fillRect(x+4,y+9,w-8,4);
+  } else if(e.type==='moblin'){
+    ctx.fillStyle=palette.e2;ctx.fillRect(x,y,w,h);
+    ctx.fillStyle='#ffaa44';ctx.fillRect(x+2,y+1,w-4,8);
+    ctx.fillStyle=palette.bl;ctx.fillRect(x+3,y+3,3,3);ctx.fillRect(x+8,y+3,3,3);
+    ctx.fillStyle='#888';ctx.fillRect(x+w/2-1,y-8,2,10);
+    ctx.fillStyle='#bbb';ctx.fillRect(x+w/2-2,y-11,4,5);
+  } else if(e.type==='stalfos'){
+    ctx.fillStyle='#aaa';ctx.fillRect(x,y,w,h);
+    ctx.fillStyle=palette.bl;ctx.fillRect(x+3,y+3,4,4);ctx.fillRect(x+7,y+3,4,4);
+    ctx.fillStyle='#888';ctx.fillRect(x+2,y+10,w-4,5);
+    ctx.fillStyle='#777';ctx.fillRect(x+1,y+11,3,5);ctx.fillRect(x+10,y+11,3,5);
+  } else if(e.type==='wizzrobe'){
+    const pl=(Math.sin(f*.12)*3)|0;
+    ctx.fillStyle=palette.e4;ctx.fillRect(x-pl,y-pl,w+pl*2,h+pl*2);
+    ctx.fillStyle='#bb66ff';ctx.fillRect(x+2,y+1,w-4,8);
+    ctx.fillStyle='#ffff00';ctx.fillRect(x+3,y+3,3,3);ctx.fillRect(x+8,y+3,3,3);
+    ctx.fillStyle=palette.e4;ctx.fillRect(x+w/2-1,y-10,2,12);
+    ctx.fillStyle='#ee00ee';ctx.fillRect(x+w/2-3,y-14,6,6);
+  } else if(e.type==='darknut'){
+    ctx.fillStyle='#555';ctx.fillRect(x,y,w,h);
+    ctx.fillStyle='#888';ctx.fillRect(x+2,y,w-4,9);
+    ctx.fillStyle=palette.bl;ctx.fillRect(x+4,y+2,3,4);ctx.fillRect(x+7,y+2,4,4);
+    ctx.fillStyle='#999';ctx.fillRect(x+3,y+9,w-6,7);
+    ctx.fillStyle='#cc0000';ctx.fillRect(x,y,w,3);
+  }
+  if(gameState==='dungeon'&&e.type!=='boss'){
+    const bw=w*(e.hp/e.mhp);
+    ctx.fillStyle='#300';ctx.fillRect(x,y-5,w,3);
+    ctx.fillStyle='#f00';ctx.fillRect(x,y-5,bw,3);
+  }
+  ctx.globalAlpha=1;
+}
+
+function drawEnemies(){ enemies.forEach(e=>drawEn(e,frame)); }
 
 function drawBombs(){ bombs.forEach(b=>{ ctx.fillStyle='#111'; ctx.fillRect(b.x,b.y,12,12); ctx.fillStyle='#f90'; ctx.fillRect(b.x+4,b.y+2,4,8); }); }
 function drawExplosions(){ explosions.forEach(ex=>{ ctx.globalAlpha=ex.life/24; ctx.fillStyle='#ff5500'; ctx.fillRect(ex.x,ex.y,ex.w,ex.h); ctx.globalAlpha=1; }); }
