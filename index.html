@@ -970,7 +970,12 @@ function getDungeonIndex(){
 
 function gameLoop(){ handleActions(); update(); draw(); updateHUD(); mmUpdate(); releaseActions(); requestAnimationFrame(gameLoop); }
 
-window.addEventListener('keydown',e=>{ if(e.key==='Enter' && gameState==='title') startGame(); });
+window.addEventListener('keydown',e=>{
+  if(gameState==='title'){ startGame(); }
+  keys[e.key]=true;
+  if(['Enter',' '].includes(e.key)) e.preventDefault();
+});
+window.addEventListener('keyup',e=>{ keys[e.key]=false; });
 
 gameLoop();
 </script>
