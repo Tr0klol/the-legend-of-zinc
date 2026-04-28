@@ -1,49 +1,4 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>Legend of Zelda — Ultimate Edition</title>
-<style>
-*{margin:0;padding:0;border:0;box-sizing:border-box}
-body{background:#000;color:#fff;display:flex;align-items:center;justify-content:center;min-height:100vh;overflow:hidden;font-family:'Courier New',monospace;user-select:none}
-#wrap{position:relative}
-canvas{display:block;image-rendering:pixelated;border:3px solid #101010;background:#000}
-#hud{width:512px;padding:8px 10px;background:#101010;border:2px solid #252525;display:flex;justify-content:space-between;gap:12px;align-items:center;font-size:12px}
-#hud b{color:#fff}
-#msg{width:512px;padding:6px 10px;background:#050505;border:1px solid #1a1a1a;min-height:22px;font-size:11px;color:#ccc}
-#ov{position:absolute;inset:0;background:rgba(0,0,0,.96);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:10}
-#ov h1{color:#ffcc00;font-size:36px;letter-spacing:5px;text-shadow:0 0 20px #ffa500;margin-bottom:6px}
-#ov p{color:#aaa;font-size:12px;margin:4px 0}
-#ov .go{color:#4ef;letter-spacing:2px;margin-top:16px;animation:blink 1.1s infinite}
-#mm-w{position:absolute;top:50px;right:-100px;width:84px;padding:6px;background:#101010;border:2px solid #222;border-radius:4px;text-align:center;z-index:5}
-#mm-w small{color:#777;letter-spacing:1px;font-size:9px;display:block;margin-bottom:4px}
-#mm{image-rendering:pixelated;border:1px solid #333}
-@keyframes blink{0%,100%{opacity:1}50%{opacity:.12}}
-</style>
-</head>
-<body>
-<div id="ov">
-  <h1>⚔ THE LEGEND OF ZELDA ⚔</h1>
-  <p>WASD / Arrows - Move</p>
-  <p>Z / Space - Sword · X - Bomb · C - Sub Item</p>
-  <p>Enter - Interact / Enter Dungeon / Open Chest / Use Key</p>
-  <p>Collect 3 Triforce Fragments, defeat Ganon, save Zelda!</p>
-  <div class="go">PRESS ANY KEY TO START</div>
-</div>
-<div id="wrap">
-  <div id="mm-w"><small>MINIMAP</small><canvas id="mm" width="72" height="60"></canvas></div>
-  <div id="hud">
-    <div><span style="color:#ffb3b3">HEARTS</span> <b id="hh">♥♥♥</b></div>
-    <div><span style="color:#8fc">RUPEES</span> <b id="hr">0</b></div>
-    <div><span style="color:#ffdd55">KEYS</span> <b id="hk">0</b></div>
-    <div><span style="color:#faa">BOMBS</span> <b id="hb">3</b></div>
-    <div><span style="color:#6ef">ITEM</span> <b id="hi">—</b></div>
-    <div><span style="color:#ffd966">TRI</span> <b id="htf">0/3</b></div>
-  </div>
-  <canvas id="c" width="512" height="352"></canvas>
-  <div id="msg">Find the dungeons, collect the Triforce fragments, and save Zelda.</div>
-</div>
-<script>
+
 const canvas=document.getElementById('c');
 const ctx=canvas.getContext('2d');
 const mmCanvas=document.getElementById('mm');
@@ -905,6 +860,3 @@ function gameLoop(){ handleActions(); update(); draw(); updateHUD(); mmUpdate();
 window.addEventListener('keydown',e=>{ if(e.key==='Enter' && gameState==='title') startGame(); });
 
 gameLoop();
-</script>
-</body>
-</html>
