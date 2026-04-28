@@ -4,39 +4,31 @@
 <meta charset="UTF-8">
 <title>Legend of Zelda — Ultimate Edition</title>
 <style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;font-family:'Courier New',monospace;color:#fff;overflow:hidden;user-select:none}
-#wrap{position:relative;display:inline-block}
-#hud{width:512px;background:#080808;padding:5px 10px;display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid #2a2a2a}
-.hh{color:#f44;font-size:15px;letter-spacing:2px}
-.hg{display:flex;align-items:center;gap:5px;font-size:12px}
-.hg span{color:#888}
-.hg b{color:#fff}
-.ht{color:#fa0;font-size:12px;font-weight:bold;letter-spacing:3px}
-.htf{color:#ffcc00;font-weight:bold}
-canvas{display:block;image-rendering:pixelated;border:2px solid #1a1a1a}
-#msg{width:512px;background:#050505;color:#fa0;padding:4px 10px;font-size:11px;min-height:20px;letter-spacing:.5px;border-top:1px solid #111}
-#ctrl{width:512px;color:#333;font-size:10px;padding:3px 10px;background:#000;display:flex;gap:12px}
-#ov{position:fixed;inset:0;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100;transition:opacity .6s}
-#ov h1{color:#fa0;font-size:32px;letter-spacing:5px;text-shadow:0 0 20px #f80;margin-bottom:6px}
-#ov .sub{color:#888;font-size:11px;letter-spacing:3px;margin-bottom:24px}
-#ov p{color:#aaa;font-size:12px;margin:3px 0}
-#ov .go{color:#0cf;font-size:14px;margin-top:20px;animation:bl 1.1s infinite}
-#mm-w{position:absolute;top:37px;right:-84px;background:#080808;border:1px solid #333;border-radius:3px;padding:4px}
-#mm-w small{display:block;color:#555;font-size:8px;text-align:center;margin-bottom:2px;letter-spacing:1px}
-#mm{display:block;image-rendering:pixelated}
-@keyframes bl{0%,100%{opacity:1}50%{opacity:0}}
+*{margin:0;padding:0;border:0;box-sizing:border-box}
+body{background:#000;color:#fff;display:flex;align-items:center;justify-content:center;min-height:100vh;overflow:hidden;font-family:'Courier New',monospace;user-select:none}
+#wrap{position:relative}
+canvas{display:block;image-rendering:pixelated;border:3px solid #101010;background:#000}
+#hud{width:512px;padding:8px 10px;background:#101010;border:2px solid #252525;display:flex;justify-content:space-between;gap:12px;align-items:center;font-size:12px}
+#hud b{color:#fff}
+#msg{width:512px;padding:6px 10px;background:#050505;border:1px solid #1a1a1a;min-height:22px;font-size:11px;color:#ccc}
+#ov{position:absolute;inset:0;background:rgba(0,0,0,.96);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:10}
+#ov h1{color:#ffcc00;font-size:36px;letter-spacing:5px;text-shadow:0 0 20px #ffa500;margin-bottom:6px}
+#ov p{color:#aaa;font-size:12px;margin:4px 0}
+#ov .go{color:#4ef;letter-spacing:2px;margin-top:16px;animation:blink 1.1s infinite}
+#mm-w{position:absolute;top:50px;right:-100px;width:84px;padding:6px;background:#101010;border:2px solid #222;border-radius:4px;text-align:center;z-index:5}
+#mm-w small{color:#777;letter-spacing:1px;font-size:9px;display:block;margin-bottom:4px}
+#mm{image-rendering:pixelated;border:1px solid #333}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.12}}
 </style>
 </head>
 <body>
 <div id="ov">
-  <h1>⚔ LEGEND OF ZELDA ⚔</h1>
-  <div class="sub">— ULTIMATE EDITION —</div>
-  <p>WASD / Arrows · Move</p>
-  <p>Z / Space · Sword &nbsp;&nbsp; X · Bomb &nbsp;&nbsp; C · Sub-Item (boomerang/bow)</p>
-  <p>Enter · Enter Dungeon / Open Chest / Unlock Door</p>
-  <p style="margin-top:10px;color:#666">Collect 3 Triforce Shards from 3 Dungeons to rescue Zelda</p>
-  <div class="go">— Press Any Key to Begin —</div>
+  <h1>⚔ THE LEGEND OF ZELDA ⚔</h1>
+  <p>WASD / Arrows - Move</p>
+  <p>Z / Space - Sword · X - Bomb · C - Sub Item</p>
+  <p>Enter - Interact / Enter Dungeon / Open Chest / Use Key</p>
+  <p>Collect 3 Triforce Fragments, defeat Ganon, save Zelda!</p>
+  <div class="go">PRESS ANY KEY TO START</div>
 </div>
 <div id="wrap">
   <div id="mm-w"><small>MINIMAP</small><canvas id="mm" width="72" height="60"></canvas></div>
@@ -50,7 +42,6 @@ canvas{display:block;image-rendering:pixelated;border:2px solid #1a1a1a}
   </div>
   <canvas id="c" width="512" height="352"></canvas>
   <div id="msg">Find the dungeons, collect the Triforce fragments, and save Zelda.</div>
-  <div id="ctrl"><span>WASD/Arrows:move</span><span>Z/Space:sword</span><span>X:bomb</span><span>C:sub-item</span><span>Enter:interact</span><span>R:restart</span></div>
 </div>
 <script>
 const canvas=document.getElementById('c');
@@ -72,28 +63,11 @@ let frame=0;
 let keys={};
 
 const palette={
-  g:'#3a7d00',gd:'#2a5800',gh:'#4a9e10',
-  w:'#0055bb',wl:'#1177dd',wh:'#33aaff',
-  sa:'#c8a060',sal:'#d4b875',
-  ro:'#666',rod:'#3a3a3a',rol:'#888',
-  tr:'#1a4400',trl:'#2a6600',trk:'#6b3a1f',
-  df:'#262626',df2:'#1e1e1e',dw:'#141414',dwl:'#2c2c2c',
-  bf:'#1e0800',bfl:'#2e1000',
-  lk:'#00b800',lkd:'#006a00',sk:'#f0c080',
-  go:'#ffcc00',wh2:'#fff',bl:'#000',
-  e1:'#cc1111',e2:'#cc6600',e4:'#8800cc',
-  boss:'#880000',bossl:'#cc0000',
-  ru:'#00ff88',rud:'#00aa55',
-  ky:'#ffdd00',ht:'#ff2222',
-  tf:'#ffcc00',tfd:'#aa8800',
-  fl:'#ff4400',fll:'#ffaa00',
-  ar:'#c8a060',bm:'#8b4513',
-  grass:'#3a7d00',grass2:'#2a5800',wall:'#3a3a3a',stone:'#444444',water:'#0055bb',wood:'#6b3b11',
-  floor:'#222222',dng:'#252525',gold:'#ffcc00',heart:'#ff2222',rupee:'#00ff88',key:'#ffdd00',
-  arrow:'#c8a060',boom:'#8b4513',enemy1:'#cc1111',enemy2:'#cc6600',enemy3:'#8800cc',
+  grass:'#2d7c16',grass2:'#266a14',wall:'#333333',stone:'#555555',water:'#0b3c8f',wood:'#8b4513',
+  floor:'#111111',dng:'#252525',gold:'#ffd700',heart:'#ff3333',rupee:'#00dd88',key:'#ffdd33',
+  arrow:'#aaccff',boom:'#d2691e',enemy1:'#cc3333',enemy2:'#cc8800',enemy3:'#9999ff',boss:'#880088',
   black:'#000',white:'#fff',text:'#eee',panel:'#121212'
 };
-const P = palette;
 
 const OW_SCREENS={
   '3,2':[ // starting screen, dungeon 1 entrance
@@ -798,143 +772,48 @@ function update(){
   }
 }
 
-function dOWTile(tx,ty,tile,f){
-  const x=tx*T,y=ty*T,wv=Math.sin(f*.05+tx+ty);
-  switch(tile){
-    case 0:
-      ctx.fillStyle=palette.g;ctx.fillRect(x,y,T,T);
-      ctx.fillStyle=palette.gd;
-      if((tx+ty)%3===0){ctx.fillRect(x+6,y+12,5,3);ctx.fillRect(x+18,y+6,4,5);}
-      if((tx*2+ty)%5===0)ctx.fillRect(x+13,y+20,4,3);
-      break;
-    case 1:
-      ctx.fillStyle=palette.rod;ctx.fillRect(x,y,T,T);
-      ctx.fillStyle=palette.ro;ctx.fillRect(x+2,y+2,T-4,T-4);
-      ctx.fillStyle=palette.rol;ctx.fillRect(x+5,y+5,T-12,T-12);
-      break;
-    case 2:
-      ctx.fillStyle=palette.w;ctx.fillRect(x,y,T,T);
-      ctx.fillStyle=palette.wl;
-      ctx.fillRect(x+4,y+9+(wv*3|0),9,3);
-      ctx.fillRect(x+18,y+18+(-wv*3|0),10,3);
-      ctx.fillStyle=palette.wh;ctx.fillRect(x+10,y+5+(wv*2|0),5,2);
-      break;
-    case 3:
-      ctx.fillStyle=palette.sa;ctx.fillRect(x,y,T,T);
-      ctx.fillStyle=palette.sal;ctx.fillRect(x+2,y+2,T-4,T-4);
-      break;
-    case 4:
-      ctx.fillStyle=palette.g;ctx.fillRect(x,y,T,T);
-      ctx.fillStyle=palette.tr;ctx.fillRect(x+3,y+2,26,22);
-      ctx.fillStyle=palette.trl;ctx.fillRect(x+8,y+3,10,10);
-      ctx.fillStyle='#0e2b00';ctx.fillRect(x+3,y+2,26,4);ctx.fillRect(x+3,y+2,4,22);
-      ctx.fillStyle=palette.trk;ctx.fillRect(x+11,y+22,10,8);
-      break;
-    case 5:case 6:case 7:{
-      ctx.fillStyle=palette.g;ctx.fillRect(x,y,T,T);
-      const cl=[palette.e1,palette.wl,palette.e4][tile-5];
-      ctx.fillStyle='#1a1a1a';ctx.fillRect(x+3,y+3,26,26);
-      ctx.fillStyle='#2a2a2a';ctx.fillRect(x+5,y+5,22,22);
-      ctx.fillStyle=cl;ctx.fillRect(x+8,y+8,16,16);
-      ctx.fillStyle=palette.go;ctx.font='bold 11px monospace';ctx.textAlign='center';
-      ctx.fillText(tile-4,x+T/2,y+22);ctx.textAlign='left';
-      break;}
-    case 8:
-      ctx.fillStyle=palette.rod;ctx.fillRect(x,y,T,T);
-      ctx.fillStyle='#0d0d0d';ctx.fillRect(x+6,y+10,20,18);
-      ctx.fillStyle=palette.ro;ctx.fillRect(x+3,y+3,26,12);
-      ctx.fillStyle=palette.rol;ctx.fillRect(x+6,y+5,20,8);
-      ctx.fillStyle='#aaa';ctx.font='7px monospace';ctx.fillText('CAVE',x+5,y+22);
-      break;
-    case 9:
-      ctx.fillStyle=palette.g;ctx.fillRect(x,y,T,T);
-      ctx.fillStyle='#1a4400';ctx.fillRect(x+4,y+8,24,14);
-      ctx.fillStyle=palette.trl;ctx.fillRect(x+6,y+6,20,12);
-      break;
-    case 12:
-      ctx.fillStyle=palette.g;ctx.fillRect(x,y,T,T);
-      ctx.fillStyle=palette.trk;ctx.fillRect(x+14,y+16,4,14);
-      ctx.fillStyle=palette.sa;ctx.fillRect(x+6,y+4,20,16);
-      ctx.fillStyle='#222';ctx.fillRect(x+8,y+6,16,12);
-      ctx.fillStyle=palette.go;ctx.font='bold 9px monospace';ctx.textAlign='center';ctx.fillText('?',x+T/2,y+17);ctx.textAlign='left';
-      break;
-    default:ctx.fillStyle=palette.g;ctx.fillRect(x,y,T,T);
+function drawTile(x,y,tile,isDungeon){
+  const px=x*TILE, py=y*TILE;
+  if(isDungeon){
+    if(tile===0){ ctx.fillStyle=palette.dng; ctx.fillRect(px,py,TILE,TILE); ctx.fillStyle='#2a2a2a'; ctx.fillRect(px+4,py+4,24,24); }
+    else if(tile===1){ ctx.fillStyle=palette.wall; ctx.fillRect(px,py,TILE,TILE); ctx.fillStyle='#333'; ctx.fillRect(px+2,py+2,28,28); ctx.fillStyle='#2a2a2a'; ctx.fillRect(px+4,py+4,20,20); }
+    else if(tile===2){ ctx.fillStyle='#4d2c0a'; ctx.fillRect(px,py,TILE,TILE); ctx.fillStyle='#6f3f16'; ctx.fillRect(px+6,py+10,20,4); ctx.fillRect(px+6,py+18,20,4); }
+    else if(tile===3){ ctx.fillStyle=palette.floor; ctx.fillRect(px,py,TILE,TILE); ctx.fillStyle='#2a2a2a'; ctx.fillRect(px+6,py+6,20,20); }
+    else if(tile===5){ ctx.fillStyle=palette.gold; ctx.fillRect(px,py,TILE,TILE); ctx.fillStyle=palette.black; ctx.fillRect(px+8,py+10,12,4); ctx.fillRect(px+6,py+6,20,4); }
+    else if(tile===6){ ctx.fillStyle='#5a3d1e'; ctx.fillRect(px,py,TILE,TILE); ctx.fillStyle=palette.gold; ctx.fillRect(px+6,py+8,20,6); ctx.fillRect(px+10,py+14,12,8); }
+    else if(tile===7){ ctx.fillStyle=palette.gold; ctx.fillRect(px,py,TILE,TILE); ctx.fillStyle=palette.floor; ctx.beginPath(); ctx.moveTo(px+16,py+4); ctx.lineTo(px+4,py+28); ctx.lineTo(px+28,py+28); ctx.closePath(); ctx.fill(); }
+    else { ctx.fillStyle=palette.dng; ctx.fillRect(px,py,TILE,TILE); }
+  } else {
+    if(tile===0){ ctx.fillStyle=palette.grass; ctx.fillRect(px,py,TILE,TILE); ctx.fillStyle=palette.grass2; if((x+y)%3===0){ ctx.fillRect(px+6,py+6,4,4); ctx.fillRect(px+18,py+18,3,3); } }
+    else if(tile===1){ ctx.fillStyle=palette.wall; ctx.fillRect(px,py,TILE,TILE); ctx.fillStyle='#3a3a3a'; ctx.fillRect(px+4,py+4,24,24); ctx.fillStyle='#222'; ctx.fillRect(px+8,py+8,12,12); }
+    else if(tile===2){ ctx.fillStyle=palette.water; ctx.fillRect(px,py,TILE,TILE); ctx.fillStyle=palette.water; ctx.fillRect(px+2,py+6,28,3); ctx.fillRect(px+2,py+16,28,3); ctx.fillRect(px+2,py+26,28,2); }
+    else if(tile===3){ ctx.fillStyle=palette.stone; ctx.fillRect(px,py,TILE,TILE); ctx.fillStyle='#444'; ctx.fillRect(px+4,py+4,24,24); ctx.fillStyle='#2d2d2d'; ctx.fillRect(px+6,py+6,20,20); }
+    else if(tile===4){ ctx.fillStyle=palette.wood; ctx.fillRect(px,py,TILE,TILE); ctx.fillStyle='#4a2200'; ctx.fillRect(px+8,py+8,16,16); ctx.fillStyle='#6b3b11'; ctx.fillRect(px+10,py+10,12,12); }
+    else if(tile===5||tile===6||tile===7){ ctx.fillStyle=palette.gold; ctx.fillRect(px,py,TILE,TILE); ctx.fillStyle='#000'; ctx.fillRect(px+10,py+6,12,12); ctx.fillStyle='#fff'; ctx.fillRect(px+12,py+8,8,8); }
+    else if(tile===8){ ctx.fillStyle=palette.wall; ctx.fillRect(px,py,TILE,TILE); ctx.fillStyle=palette.black; ctx.fillRect(px+6,py+8,20,16); ctx.fillStyle='#999'; ctx.fillRect(px+10,py+10,12,8); }
+    else if(tile===9){ ctx.fillStyle=palette.wall; ctx.fillRect(px,py,TILE,TILE); ctx.fillStyle='#222'; ctx.fillRect(px+4,py+4,24,24); ctx.fillStyle='#fff'; ctx.fillRect(px+10,py+8,12,12); }
   }
 }
 
-function dDnTile(tx,ty,tile){
-  const x=tx*T,y=ty*T;
-  const isBossRoom=dungeonRoom==='2,0';
-  switch(tile){
-    case 0:
-      ctx.fillStyle=isBossRoom?palette.bf:palette.df;ctx.fillRect(x,y,T,T);
-      ctx.strokeStyle=isBossRoom?palette.bfl:palette.df2;ctx.lineWidth=1;ctx.strokeRect(x+.5,y+.5,T-1,T-1);
-      break;
-    case 1:
-      ctx.fillStyle=palette.dw;ctx.fillRect(x,y,T,T);
-      ctx.fillStyle='#0a0a0a';ctx.fillRect(x,y,T,4);ctx.fillRect(x,y,4,T);
-      ctx.fillStyle=palette.dwl;ctx.fillRect(x+3,y+3,T-6,T-6);
-      ctx.fillStyle='#333';ctx.fillRect(x+6,y+6,T-14,T-14);
-      break;
-    case 2:
-      ctx.fillStyle=palette.dw;ctx.fillRect(x,y,T,T);
-      ctx.fillStyle='#5a2500';ctx.fillRect(x+5,y+5,T-10,T-10);
-      ctx.fillStyle='#ff8800';ctx.fillRect(x+12,y+12,8,8);
-      ctx.fillStyle=palette.go;ctx.font='11px serif';ctx.textAlign='center';ctx.fillText('🔒',x+T/2,y+22);ctx.textAlign='left';
-      break;
-    case 3:
-      ctx.fillStyle=isBossRoom?palette.bf:palette.df;ctx.fillRect(x,y,T,T);
-      ctx.strokeStyle='#444';ctx.strokeRect(x+2,y+2,T-4,T-4);
-      break;
-    case 5:
-      ctx.fillStyle=palette.df;ctx.fillRect(x,y,T,T);
-      ctx.fillStyle='#113300';ctx.fillRect(x+4,y+4,T-8,T-8);
-      ctx.fillStyle='#00cc44';ctx.fillRect(x+8,y+8,T-16,T-16);
-      ctx.fillStyle='#0f0';ctx.font='bold 7px monospace';ctx.textAlign='center';ctx.fillText('EXIT',x+T/2,y+20);ctx.textAlign='left';
-      break;
-    case 6:
-      ctx.fillStyle=palette.df;ctx.fillRect(x,y,T,T);
-      ctx.fillStyle='#6a4a10';ctx.fillRect(x+4,y+10,T-8,T-14);
-      ctx.fillStyle='#c89420';ctx.fillRect(x+4,y+10,T-8,5);
-      ctx.fillStyle=palette.go;ctx.fillRect(x+12,y+14,8,8);
-      ctx.fillStyle='#333';ctx.font='8px monospace';ctx.textAlign='center';ctx.fillText('◆',x+T/2,y+23);ctx.textAlign='left';
-      break;
-    case 7:
-      ctx.fillStyle=palette.bfl;ctx.fillRect(x,y,T,T);
-      ctx.fillStyle=palette.tf;
-      ctx.beginPath();ctx.moveTo(x+T/2,y+4);ctx.lineTo(x+T-4,y+T-4);ctx.lineTo(x+4,y+T-4);ctx.closePath();ctx.fill();
-      ctx.fillStyle=palette.tfd;
-      ctx.beginPath();ctx.moveTo(x+4,y+T-4);ctx.lineTo(x+T/2,y+T-4);ctx.lineTo(x+T/2-8,y+T-16);ctx.closePath();ctx.fill();
-      ctx.beginPath();ctx.moveTo(x+T-4,y+T-4);ctx.lineTo(x+T/2,y+T-4);ctx.lineTo(x+T/2+8,y+T-16);ctx.closePath();ctx.fill();
-      break;
-    default:ctx.fillStyle=palette.df;ctx.fillRect(x,y,T,T);
-  }
+function drawPlayer(){
+  const x=player.x|0, y=player.y|0;
+  if(player.inv>0 && Math.floor(player.inv/6)%2===1) return;
+  const frameStep = player.moving ? Math.floor(frame/10)%2 : 0;
+  const legY = y+12 + frameStep;
+  ctx.fillStyle='#2b6a24'; ctx.fillRect(x+4,y+4,6,8); // tunic
+  ctx.fillStyle='#094f12'; ctx.fillRect(x+4,y+10,6,4); // belt shading
+  ctx.fillStyle='#5cc'; ctx.fillRect(x+2,y+4,2,6); ctx.fillRect(x+12,y+4,2,6); // sleeves
+  ctx.fillStyle='#e0d18c'; ctx.fillRect(x+5,y+1,4,4); // hat top
+  ctx.fillStyle='#194012'; ctx.fillRect(x+4,y+5,8,4); // shoulders
+  ctx.fillStyle='#111'; ctx.fillRect(x+5,y+8,1,1); ctx.fillRect(x+8,y+8,1,1); // eyes
+  ctx.fillStyle='#3a1f08'; ctx.fillRect(x+5,legY,3,4); ctx.fillRect(x+8,legY,3,4); // legs
+  if(player.dir===0){ ctx.fillStyle='#886633'; ctx.fillRect(x+5,y-2,4,8); }
+  if(player.dir===2){ ctx.fillStyle='#886633'; ctx.fillRect(x+5,y+14,4,8); }
+  if(player.dir===1){ ctx.fillStyle='#886633'; ctx.fillRect(x+12,y+6,6,3); }
+  if(player.dir===3){ ctx.fillStyle='#886633'; ctx.fillRect(x-2,y+6,6,3); }
 }
 
-function drawTile(x,y,tile,isDungeon){ if(isDungeon) dDnTile(x,y,tile); else dOWTile(x,y,tile,frame); }
-
-function drawPlayer(f){
-  const x=player.x|0,y=player.y|0;
-  if(player.inv>0&&Math.floor(player.inv/6)%2===1)return;
-  const wk=Math.floor(f/9)%2;
-  ctx.fillStyle=palette.lk;ctx.fillRect(x+3,y+7,10,9);
-  ctx.fillStyle=palette.lkd;ctx.fillRect(x+4,y+1,8,8);
-  ctx.fillStyle=palette.lk;ctx.fillRect(x+3,y+6,10,3);
-  ctx.fillStyle=palette.sk;ctx.fillRect(x+4,y+4,7,5);
-  ctx.fillStyle=palette.bl;
-  if(player.dir===2){ctx.fillRect(x+5,y+6,2,2);ctx.fillRect(x+9,y+6,2,2);} else if(player.dir===1)ctx.fillRect(x+9,y+6,2,2);
-  else if(player.dir===3)ctx.fillRect(x+5,y+6,2,2);
-  ctx.fillStyle=palette.sk;
-  if(wk===0){ctx.fillRect(x+4,y+16,4,4);ctx.fillRect(x+9,y+16,4,4);} else{ctx.fillRect(x+3,y+16,4,5);ctx.fillRect(x+10,y+16,4,5);}
-  ctx.fillStyle='#2a1000';ctx.fillRect(x+4,y+20,4,2);ctx.fillRect(x+9,y+20,4,2);
-  ctx.fillStyle='#2244cc';
-  if(player.dir===3){ctx.fillRect(x+12,y+7,5,8);ctx.fillStyle='#fff';ctx.fillRect(x+13,y+9,3,3);}
-  if(player.dir===1){ctx.fillRect(x-3,y+7,5,8);ctx.fillStyle='#fff';ctx.fillRect(x-2,y+9,3,3);}
-  if(player.dir===0)ctx.fillRect(x+8,y-2,7,4);
-  if(player.dir===2)ctx.fillRect(x+0,y+14,7,4);
-}
-
-function drawSword(){ if(!sword) return; ctx.fillStyle='#d0d0d0'; ctx.fillRect(sword.x|0,sword.y|0,sword.w,sword.h); ctx.fillStyle='#eeee66'; ctx.fillRect(sword.x|0+6,sword.y|0+6,sword.w-12,sword.h-12); ctx.fillStyle=palette.go; ctx.fillRect(sword.x|0+sword.w/2-2,sword.y|0+sword.h/2-2,4,4); }
+function drawSword(){ if(!sword) return; ctx.fillStyle='#e4d290'; ctx.fillRect(sword.x|0,sword.y|0,sword.w,sword.h); ctx.fillStyle='#aaa'; ctx.fillRect(sword.x|0 + 2,sword.y|0 + 2,2,2); }
 
 function dBoss(e,f){
   if(e.inv>0) ctx.globalAlpha=.6;
