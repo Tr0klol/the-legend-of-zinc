@@ -604,7 +604,16 @@ function movePlayer(){
   const sol = gameState==='ow'?isSolidOW:isSolidDungeon;
   const speed=player.speed;
   if(player.inv>0) player.inv--;
-  const nx=player.x+dx*speed, ny=player.y+dy*speed;
+  let nx=player.x+dx*speed, ny=player.y+dy*speed;
+  if(gameState==='dungeon'){
+    if(dungeonRoom==='0,0'){
+      if(ny < 0) ny = player.y;
+    } else if(dungeonRoom==='2,0'){
+      if(ny > HEIGHT - player.h) ny = player.y;
+    }
+    if(nx < 0) nx = 0;
+    if(nx > WIDTH - player.w) nx = WIDTH - player.w;
+  }
   if(!collides(nx+2,player.y+2,player.w-4,player.h-4,map,sol)) player.x=nx;
   if(!collides(player.x+2,ny+2,player.w-4,player.h-4,map,sol)) player.y=ny;
   if(gameState==='ow'){
@@ -677,8 +686,8 @@ function updateEnemies(){
       moveEnemy(e,map,sol);
     }
     if(e.type==='stalfos'){
-      if(dist<90){ e.dx=Math.sign(dx); e.dy=Math.sign(dy); }
-      else if(e.tm%40===0){ const dir=[[-1,0],[1,0],[0,-1],[0,1]][Math.floor(Math.random()*4)]; e.dx=dir[0]; e.dy=dir[1]; }
+      if(dist<120){ e.dx=Math.sign(dx); e.dy=Math.sign(dy); }
+      else if(e.tm%60===0){ const dir=[[-1,0],[1,0],[0,-1],[0,1]][Math.floor(Math.random()*4)]; e.dx=dir[0]; e.dy=dir[1]; }
       moveEnemy(e,map,sol);
     }
     if(e.type==='wizzrobe'){
@@ -713,6 +722,10 @@ function updateEnemies(){
 
 function moveEnemy(e,map,sol){
   const nx=e.x+e.dx*e.spd, ny=e.y+e.dy*e.spd;
+  if(gameState==='dungeon'){
+    if(nx < 0 || nx > WIDTH - e.w) return;
+    if(ny < 0 || ny > HEIGHT - e.h) return;
+  }
   if(!collides(nx,ny,e.w,e.h,map,sol)){
     e.x=nx; e.y=ny;
   } else {
